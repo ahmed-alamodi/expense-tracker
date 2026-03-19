@@ -3,13 +3,13 @@ import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { I18nManager, useColorScheme } from 'react-native';
 import 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
+import '@/lib/i18n';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { isConfigured } from '@/lib/supabase';
-
-I18nManager.allowRTL(true);
-I18nManager.forceRTL(true);
+import { AppThemeProvider, useAppTheme } from '@/lib/theme-context';
+import { LanguageProvider } from '@/lib/language-context';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -19,7 +19,7 @@ export const unstable_settings = {
 
 SplashScreen.preventAutoHideAsync();
 
-const ArabicLightTheme = {
+const CustomLightTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
@@ -31,7 +31,7 @@ const ArabicLightTheme = {
   },
 };
 
-const ArabicDarkTheme = {
+const CustomDarkTheme = {
   ...DarkTheme,
   colors: {
     ...DarkTheme.colors,
@@ -61,17 +61,22 @@ export default function RootLayout() {
   if (!loaded) return null;
 
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+    <AppThemeProvider>
+      <AuthProvider>
+        <LanguageProvider>
+          <RootLayoutNav />
+        </LanguageProvider>
+      </AuthProvider>
+    </AppThemeProvider>
   );
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  const { colorScheme } = useAppTheme();
   const { user, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (loading) return;
@@ -94,14 +99,14 @@ function RootLayoutNav() {
   }, [user, loading, segments]);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? ArabicDarkTheme : ArabicLightTheme}>
+    <ThemeProvider value={colorScheme === 'dark' ? CustomDarkTheme : CustomLightTheme}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="auth" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="expense/[id]"
           options={{
-            title: 'تعديل المصروف',
+            title: t('expenses.editExpense'),
             presentation: 'modal',
             headerShown: true,
           }}

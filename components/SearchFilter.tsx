@@ -10,8 +10,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { DEFAULT_CATEGORIES, DEFAULT_PAYMENT_METHODS } from '@/constants/categories';
 
 export interface Filters {
   search: string;
@@ -22,10 +22,13 @@ export interface Filters {
 interface Props {
   filters: Filters;
   onFiltersChange: (filters: Filters) => void;
+  categoryNames?: string[];
+  paymentMethods?: string[];
 }
 
-export default function SearchFilter({ filters, onFiltersChange }: Props) {
+export default function SearchFilter({ filters, onFiltersChange, categoryNames = [], paymentMethods = [] }: Props) {
   const colors = useThemeColor();
+  const { t } = useTranslation();
   const [showCatPicker, setShowCatPicker] = useState(false);
   const [showPaymentPicker, setShowPaymentPicker] = useState(false);
 
@@ -53,15 +56,16 @@ export default function SearchFilter({ filters, onFiltersChange }: Props) {
             </TouchableOpacity>
           </View>
           <FlatList
-            data={['الكل', ...items]}
+            data={[t('filter.all'), ...items]}
             keyExtractor={(item) => item}
             renderItem={({ item }) => {
-              const isSelected = item === 'الكل' ? !currentValue : item === currentValue;
+              const isAll = item === t('filter.all');
+              const isSelected = isAll ? !currentValue : item === currentValue;
               return (
                 <TouchableOpacity
                   style={[styles.modalItem, { borderBottomColor: colors.border }]}
                   onPress={() => {
-                    onSelect(item === 'الكل' ? '' : item);
+                    onSelect(isAll ? '' : item);
                     onClose();
                   }}
                 >
@@ -95,7 +99,7 @@ export default function SearchFilter({ filters, onFiltersChange }: Props) {
           style={[styles.searchInput, { color: colors.text }]}
           value={filters.search}
           onChangeText={text => onFiltersChange({ ...filters, search: text })}
-          placeholder="بحث في الوصف والملاحظات..."
+          placeholder={t('filter.searchPlaceholder')}
           placeholderTextColor={colors.textSecondary}
           textAlign="right"
           returnKeyType="search"
@@ -132,7 +136,7 @@ export default function SearchFilter({ filters, onFiltersChange }: Props) {
               { color: filters.mainCategory ? '#FFF' : colors.text },
             ]}
           >
-            {filters.mainCategory || 'الفئة'}
+            {filters.mainCategory || t('filter.category')}
           </Text>
           <Ionicons
             name="chevron-down"
@@ -157,7 +161,7 @@ export default function SearchFilter({ filters, onFiltersChange }: Props) {
               { color: filters.paymentMethod ? '#FFF' : colors.text },
             ]}
           >
-            {filters.paymentMethod || 'طريقة الدفع'}
+            {filters.paymentMethod || t('filter.paymentMethod')}
           </Text>
           <Ionicons
             name="chevron-down"
@@ -172,7 +176,7 @@ export default function SearchFilter({ filters, onFiltersChange }: Props) {
             onPress={clearFilters}
           >
             <Ionicons name="close" size={14} color="#FFF" />
-            <Text style={[styles.chipText, { color: '#FFF' }]}>مسح الفلاتر</Text>
+            <Text style={[styles.chipText, { color: '#FFF' }]}>{t('filter.clearFilters')}</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -180,18 +184,18 @@ export default function SearchFilter({ filters, onFiltersChange }: Props) {
       {renderPickerModal(
         showCatPicker,
         () => setShowCatPicker(false),
-        DEFAULT_CATEGORIES.map(c => c.main),
+        categoryNames,
         cat => onFiltersChange({ ...filters, mainCategory: cat }),
-        'فلترة حسب الفئة',
+        t('filter.filterByCategory'),
         filters.mainCategory
       )}
 
       {renderPickerModal(
         showPaymentPicker,
         () => setShowPaymentPicker(false),
-        DEFAULT_PAYMENT_METHODS,
+        paymentMethods,
         method => onFiltersChange({ ...filters, paymentMethod: method }),
-        'فلترة حسب طريقة الدفع',
+        t('filter.filterByPayment'),
         filters.paymentMethod
       )}
     </View>
@@ -267,7 +271,6 @@ const styles = StyleSheet.create({
   },
   modalItemText: {
     fontSize: 16,
-    textAlign: 'right',
   },
   modalItemSelected: {
     fontWeight: '700',

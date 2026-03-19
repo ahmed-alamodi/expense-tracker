@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/auth-context';
 import { isConfigured } from '@/lib/supabase';
 import { useThemeColor } from '@/hooks/useThemeColor';
@@ -19,6 +20,7 @@ import { useThemeColor } from '@/hooks/useThemeColor';
 export default function AuthScreen() {
   const colors = useThemeColor();
   const { signIn, signUp } = useAuth();
+  const { t } = useTranslation();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,13 +33,10 @@ export default function AuthScreen() {
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         <Ionicons name="cloud-offline-outline" size={64} color={colors.textSecondary} />
         <Text style={[styles.setupTitle, { color: colors.text }]}>
-          Supabase غير مُعَدّ
+          {t('auth.supabaseNotConfigured')}
         </Text>
         <Text style={[styles.setupDesc, { color: colors.textSecondary }]}>
-          لاستخدام التطبيق، يرجى إعداد Supabase أولاً:{'\n\n'}
-          1. أنشئ مشروع على supabase.com{'\n'}
-          2. شغّل ملف supabase-setup.sql{'\n'}
-          3. عدّل lib/supabase.ts وأضف الـ URL والـ Key
+          {t('auth.supabaseSetupGuide')}
         </Text>
       </View>
     );
@@ -45,17 +44,17 @@ export default function AuthScreen() {
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('تنبيه', 'يرجى إدخال البريد الإلكتروني وكلمة المرور');
+      Alert.alert(t('common.warning'), t('auth.enterCredentials'));
       return;
     }
 
     if (!isLogin && password !== confirmPassword) {
-      Alert.alert('تنبيه', 'كلمة المرور غير متطابقة');
+      Alert.alert(t('common.warning'), t('auth.passwordMismatch'));
       return;
     }
 
     if (!isLogin && password.length < 6) {
-      Alert.alert('تنبيه', 'كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+      Alert.alert(t('common.warning'), t('auth.passwordMinLength'));
       return;
     }
 
@@ -64,31 +63,31 @@ export default function AuthScreen() {
       if (isLogin) {
         const { error } = await signIn(email.trim(), password);
         if (error) {
-          Alert.alert('خطأ', getErrorMessage(error.message));
+          Alert.alert(t('common.error'), getErrorMessage(error.message));
         }
       } else {
         const { error } = await signUp(email.trim(), password);
         if (error) {
-          Alert.alert('خطأ', getErrorMessage(error.message));
+          Alert.alert(t('common.error'), getErrorMessage(error.message));
         } else {
           Alert.alert(
-            'تم التسجيل',
-            'تم إنشاء حسابك بنجاح. تحقق من بريدك الإلكتروني لتأكيد الحساب.',
-            [{ text: 'حسناً', onPress: () => setIsLogin(true) }]
+            t('auth.registered'),
+            t('auth.registeredMsg'),
+            [{ text: t('common.ok'), onPress: () => setIsLogin(true) }]
           );
         }
       }
     } catch (err: any) {
-      Alert.alert('خطأ', err.message);
+      Alert.alert(t('common.error'), err.message);
     } finally {
       setLoading(false);
     }
   };
 
   const getErrorMessage = (msg: string) => {
-    if (msg.includes('Invalid login')) return 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
-    if (msg.includes('already registered')) return 'هذا البريد الإلكتروني مسجل بالفعل';
-    if (msg.includes('invalid email')) return 'البريد الإلكتروني غير صحيح';
+    if (msg.includes('Invalid login')) return t('auth.invalidLogin');
+    if (msg.includes('already registered')) return t('auth.alreadyRegistered');
+    if (msg.includes('invalid email')) return t('auth.invalidEmail');
     return msg;
   };
 
@@ -107,9 +106,9 @@ export default function AuthScreen() {
           <View style={[styles.iconCircle, { backgroundColor: colors.tint + '15' }]}>
             <Ionicons name="wallet" size={48} color={colors.tint} />
           </View>
-          <Text style={[styles.appName, { color: colors.text }]}>تتبع المصاريف</Text>
+          <Text style={[styles.appName, { color: colors.text }]}>{t('auth.appName')}</Text>
           <Text style={[styles.appDesc, { color: colors.textSecondary }]}>
-            تابع مصاريفك الشهرية بسهولة
+            {t('auth.appTagline')}
           </Text>
         </View>
 
@@ -120,7 +119,7 @@ export default function AuthScreen() {
             onPress={() => setIsLogin(true)}
           >
             <Text style={[styles.toggleText, { color: isLogin ? '#FFF' : colors.textSecondary }]}>
-              تسجيل الدخول
+              {t('auth.login')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -128,14 +127,14 @@ export default function AuthScreen() {
             onPress={() => setIsLogin(false)}
           >
             <Text style={[styles.toggleText, { color: !isLogin ? '#FFF' : colors.textSecondary }]}>
-              حساب جديد
+              {t('auth.signup')}
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* Form */}
         <View style={[styles.form, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.label, { color: colors.text }]}>البريد الإلكتروني</Text>
+          <Text style={[styles.label, { color: colors.text }]}>{t('auth.email')}</Text>
           <View style={[styles.inputRow, { borderColor: colors.border }]}>
             <Ionicons name="mail-outline" size={20} color={colors.textSecondary} />
             <TextInput
@@ -147,11 +146,10 @@ export default function AuthScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
-              textAlign="right"
             />
           </View>
 
-          <Text style={[styles.label, { color: colors.text }]}>كلمة المرور</Text>
+          <Text style={[styles.label, { color: colors.text }]}>{t('auth.password')}</Text>
           <View style={[styles.inputRow, { borderColor: colors.border }]}>
             <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
               <Ionicons
@@ -167,14 +165,13 @@ export default function AuthScreen() {
               placeholder="••••••••"
               placeholderTextColor={colors.textSecondary}
               secureTextEntry={!showPassword}
-              textAlign="right"
             />
             <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
           </View>
 
           {!isLogin && (
             <>
-              <Text style={[styles.label, { color: colors.text }]}>تأكيد كلمة المرور</Text>
+              <Text style={[styles.label, { color: colors.text }]}>{t('auth.confirmPassword')}</Text>
               <View style={[styles.inputRow, { borderColor: colors.border }]}>
                 <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
                 <TextInput
@@ -184,7 +181,6 @@ export default function AuthScreen() {
                   placeholder="••••••••"
                   placeholderTextColor={colors.textSecondary}
                   secureTextEntry={!showPassword}
-                  textAlign="right"
                 />
               </View>
             </>
@@ -205,7 +201,7 @@ export default function AuthScreen() {
                   color="#FFF"
                 />
                 <Text style={styles.submitText}>
-                  {isLogin ? 'تسجيل الدخول' : 'إنشاء حساب'}
+                  {isLogin ? t('auth.login') : t('auth.createAccount')}
                 </Text>
               </>
             )}
@@ -287,7 +283,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 12,
     marginBottom: 6,
-    textAlign: 'right',
   },
   inputRow: {
     flexDirection: 'row',

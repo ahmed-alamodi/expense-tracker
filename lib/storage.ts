@@ -1,9 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DEFAULT_EXCHANGE_RATE, DEFAULT_PAYMENT_METHODS } from '@/constants/categories';
+import { DEFAULT_EXCHANGE_RATE, DEFAULT_PAYMENT_METHODS, DEFAULT_CATEGORIES } from '@/constants/categories';
+import { CategoryGroup } from '@/types/expense';
 
 const KEYS = {
   EXCHANGE_RATE: '@exchange_rate',
   PAYMENT_METHODS: '@payment_methods',
+  CATEGORIES: '@categories',
 };
 
 export async function getExchangeRate(): Promise<number> {
@@ -38,4 +40,17 @@ export function sarToYmr(sar: number, rate: number): number {
 
 export function ymrToSar(ymr: number, rate: number): number {
   return parseFloat((ymr / rate).toFixed(2));
+}
+
+export async function getCategories(): Promise<CategoryGroup[]> {
+  try {
+    const val = await AsyncStorage.getItem(KEYS.CATEGORIES);
+    return val ? JSON.parse(val) : DEFAULT_CATEGORIES;
+  } catch {
+    return DEFAULT_CATEGORIES;
+  }
+}
+
+export async function setCategories(categories: CategoryGroup[]): Promise<void> {
+  await AsyncStorage.setItem(KEYS.CATEGORIES, JSON.stringify(categories));
 }

@@ -9,11 +9,15 @@ CREATE TABLE IF NOT EXISTS expenses (
   description TEXT NOT NULL DEFAULT '',
   amount_sar DECIMAL(10, 2) NOT NULL DEFAULT 0,
   amount_ymr DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  exchange_rate DECIMAL(10, 4) NOT NULL DEFAULT 410,
   payment_method TEXT NOT NULL DEFAULT '',
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   user_id UUID REFERENCES auth.users(id) DEFAULT auth.uid()
 );
+
+-- Migration: add exchange_rate column if upgrading from older schema
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS exchange_rate DECIMAL(10, 4) NOT NULL DEFAULT 410;
 
 -- Budgets table
 CREATE TABLE IF NOT EXISTS budgets (
@@ -25,6 +29,36 @@ CREATE TABLE IF NOT EXISTS budgets (
   user_id UUID REFERENCES auth.users(id) DEFAULT auth.uid(),
   UNIQUE(month, year, category, user_id)
 );
+
+-- Monthly estimates table (recurring/expected monthly costs per item)
+CREATE TABLE IF NOT EXISTS monthly_estimates (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  main_category TEXT NOT NULL,
+  sub_category TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  amount_sar DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  amount_ymr DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  notes TEXT,
+  user_id UUID REFERENCES auth.users(id) DEFAULT auth.uid()
+);
+
+ALTER TABLE monthly_estimates ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own estimates"
+  ON monthly_estimates FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own estimates"
+  ON monthly_estimates FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own estimates"
+  ON monthly_estimates FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own estimates"
+  ON monthly_estimates FOR DELETE
+  USING (auth.uid() = user_id);
 
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date DESC);

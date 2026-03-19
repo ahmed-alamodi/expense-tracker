@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { PieChart, BarChart } from 'react-native-chart-kit';
+import { useTranslation } from 'react-i18next';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useMonthlyTotal } from '@/hooks/useExpenses';
 import { isConfigured } from '@/lib/supabase';
@@ -17,13 +18,12 @@ import MonthPicker from '@/components/MonthPicker';
 import { CATEGORY_COLORS } from '@/constants/categories';
 
 const screenWidth = Dimensions.get('window').width;
-const MONTH_LABELS = [
-  'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-  'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
-];
+
+const MONTH_KEYS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
 
 export default function StatsScreen() {
   const colors = useThemeColor();
+  const { t } = useTranslation();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -75,8 +75,8 @@ export default function StatsScreen() {
   const barLabels: string[] = [];
   const barData: number[] = [];
   for (let i = Math.max(0, currentMonthIdx - 5); i <= currentMonthIdx; i++) {
-    barLabels.push(MONTH_LABELS[i].slice(0, 5));
-    barData.push(yearlyTotals[i]);
+    barLabels.push(t(`months.${MONTH_KEYS[i]}`).slice(0, 5));
+    barData.push(parseFloat((yearlyTotals[i] || 0).toFixed(2)));
   }
 
   const chartConfig = {
@@ -106,10 +106,10 @@ export default function StatsScreen() {
       {/* Total */}
       <View style={[styles.totalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>
-          إجمالي الشهر
+          {t('stats.monthlyTotal')}
         </Text>
         <Text style={[styles.totalValue, { color: colors.expense }]}>
-          {totalSar.toFixed(2)} ر.س
+          {totalSar.toFixed(2)} {t('common.sar')}
         </Text>
       </View>
 
@@ -117,7 +117,7 @@ export default function StatsScreen() {
       {pieData.length > 0 ? (
         <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.chartTitle, { color: colors.text }]}>
-            توزيع المصاريف حسب الفئة
+            {t('stats.categoryDistribution')}
           </Text>
           <PieChart
             data={pieData}
@@ -133,7 +133,7 @@ export default function StatsScreen() {
       ) : (
         <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            لا توجد بيانات لهذا الشهر
+            {t('stats.noData')}
           </Text>
         </View>
       )}
@@ -142,7 +142,7 @@ export default function StatsScreen() {
       {barData.some(v => v > 0) && (
         <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.chartTitle, { color: colors.text }]}>
-            مقارنة شهرية ({year})
+            {t('stats.monthlyComparison')} ({year})
           </Text>
           <BarChart
             data={{
@@ -153,7 +153,7 @@ export default function StatsScreen() {
             height={200}
             chartConfig={chartConfig}
             yAxisLabel=""
-            yAxisSuffix=" ر.س"
+            yAxisSuffix={` ${t('common.sar')}`}
             fromZero
             showValuesOnTopOfBars
             style={{ borderRadius: 8 }}
@@ -165,7 +165,7 @@ export default function StatsScreen() {
       {pieData.length > 0 && (
         <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.chartTitle, { color: colors.text }]}>
-            تفاصيل الفئات
+            {t('stats.categoryDetails')}
           </Text>
           {Object.entries(byCategory)
             .sort((a, b) => b[1].sar - a[1].sar)
@@ -180,7 +180,7 @@ export default function StatsScreen() {
                       <Text style={[styles.catName, { color: colors.text }]}>{cat}</Text>
                     </View>
                     <Text style={[styles.catAmount, { color: colors.textSecondary }]}>
-                      {data.sar.toFixed(2)} ر.س ({data.count})
+                      {data.sar.toFixed(2)} {t('common.sar')} ({data.count})
                     </Text>
                   </View>
                   <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
@@ -227,7 +227,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     marginBottom: 12,
-    textAlign: 'right',
     alignSelf: 'stretch',
   },
   emptyText: { fontSize: 14, textAlign: 'center', paddingVertical: 20 },
@@ -248,5 +247,5 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   progressFill: { height: '100%', borderRadius: 3 },
-  pctText: { fontSize: 11, textAlign: 'left', marginTop: 2 },
+  pctText: { fontSize: 11, marginTop: 2 },
 });

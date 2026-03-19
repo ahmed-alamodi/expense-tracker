@@ -1,5 +1,5 @@
 import { supabase, isConfigured } from './supabase';
-import { Expense, Budget } from '@/types/expense';
+import { Expense, Budget, MonthlyEstimate } from '@/types/expense';
 
 function checkConfigured() {
   if (!isConfigured) {
@@ -180,5 +180,41 @@ export async function upsertBudget(budget: Omit<Budget, 'id' | 'user_id'>) {
 
 export async function deleteBudget(id: string) {
   const { error } = await supabase.from('budgets').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// Monthly Estimates functions
+export async function getMonthlyEstimates() {
+  const { data, error } = await supabase
+    .from('monthly_estimates')
+    .select('*')
+    .order('main_category', { ascending: true });
+  if (error) throw error;
+  return data as MonthlyEstimate[];
+}
+
+export async function createMonthlyEstimate(estimate: Omit<MonthlyEstimate, 'id' | 'user_id'>) {
+  const { data, error } = await supabase
+    .from('monthly_estimates')
+    .insert(estimate)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as MonthlyEstimate;
+}
+
+export async function updateMonthlyEstimate(id: string, estimate: Partial<MonthlyEstimate>) {
+  const { data, error } = await supabase
+    .from('monthly_estimates')
+    .update(estimate)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as MonthlyEstimate;
+}
+
+export async function deleteMonthlyEstimate(id: string) {
+  const { error } = await supabase.from('monthly_estimates').delete().eq('id', id);
   if (error) throw error;
 }

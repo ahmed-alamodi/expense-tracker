@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Expense } from '@/types/expense';
 import { CATEGORY_COLORS } from '@/constants/categories';
 import { useThemeColor } from '@/hooks/useThemeColor';
@@ -19,9 +20,11 @@ interface Props {
 
 export default function ExpenseCard({ expense, onDelete }: Props) {
   const colors = useThemeColor();
+  const { t, i18n } = useTranslation();
 
   const categoryColor = CATEGORY_COLORS[expense.main_category] || '#B0BEC5';
-  const formattedDate = new Date(expense.date).toLocaleDateString('ar-SA', {
+  const locale = i18n.language === 'ar' ? 'ar-SA' : 'en-US';
+  const formattedDate = new Date(expense.date).toLocaleDateString(locale, {
     day: 'numeric',
     month: 'short',
   });
@@ -31,10 +34,10 @@ export default function ExpenseCard({ expense, onDelete }: Props) {
   };
 
   const handleDelete = () => {
-    Alert.alert('حذف المصروف', 'هل أنت متأكد من حذف هذا المصروف؟', [
-      { text: 'إلغاء', style: 'cancel' },
+    Alert.alert(t('expenses.deleteExpense'), t('expenses.deleteConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'حذف',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: () => onDelete?.(expense.id),
       },
@@ -47,42 +50,49 @@ export default function ExpenseCard({ expense, onDelete }: Props) {
       onPress={handlePress}
       activeOpacity={0.7}
     >
-      <View style={[styles.categoryDot, { backgroundColor: categoryColor }]} />
+      <TouchableOpacity onPress={handleDelete} style={styles.deleteBtn} hitSlop={8}>
+        <Ionicons name="trash-outline" size={18} color={colors.danger} />
+      </TouchableOpacity>
 
       <View style={styles.content}>
         <View style={styles.topRow}>
+          <Text style={[styles.amount, { color: colors.expense }]}>
+            {expense.amount_sar.toFixed(2)} {t('common.sar')}
+          </Text>
           <Text style={[styles.description, { color: colors.text }]} numberOfLines={1}>
             {expense.description || expense.sub_category}
-          </Text>
-          <Text style={[styles.amount, { color: colors.expense }]}>
-            {expense.amount_sar.toFixed(2)} ر.س
           </Text>
         </View>
 
         <View style={styles.bottomRow}>
+          <Text style={[styles.amountYmr, { color: colors.textSecondary }]}>
+            {expense.amount_ymr.toLocaleString()} {t('common.ymr')}
+          </Text>
           <View style={styles.tags}>
-            <Text style={[styles.tag, { backgroundColor: categoryColor + '20', color: categoryColor }]}>
-              {expense.main_category}
-            </Text>
             <Text style={[styles.date, { color: colors.textSecondary }]}>
               {formattedDate}
             </Text>
+            <Text style={[styles.tag, { backgroundColor: categoryColor + '20', color: categoryColor }]}>
+              {expense.main_category}
+            </Text>
           </View>
-          <Text style={[styles.amountYmr, { color: colors.textSecondary }]}>
-            {expense.amount_ymr.toLocaleString()} ي.ر
-          </Text>
         </View>
 
-        {expense.payment_method ? (
-          <Text style={[styles.paymentMethod, { color: colors.textSecondary }]}>
-            {expense.payment_method}
-          </Text>
-        ) : null}
+        <View style={styles.metaRow}>
+          {expense.exchange_rate ? (
+            <Text style={[styles.rateTag, { color: colors.textSecondary }]}>
+              {t('expenses.exchangeRateLabel')} {expense.exchange_rate}
+            </Text>
+          ) : null}
+          {expense.payment_method ? (
+            <Text style={[styles.paymentMethod, { color: colors.textSecondary }]}>
+              {expense.payment_method}
+            </Text>
+          ) : null}
+        </View>
       </View>
 
-      <TouchableOpacity onPress={handleDelete} style={styles.deleteBtn} hitSlop={8}>
-        <Ionicons name="trash-outline" size={18} color={colors.danger} />
-      </TouchableOpacity>
+      <View style={[styles.categoryBar, { backgroundColor: categoryColor }]} />
     </TouchableOpacity>
   );
 }
@@ -91,20 +101,22 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     marginHorizontal: 16,
     marginVertical: 4,
     borderRadius: 12,
     borderWidth: 1,
   },
-  categoryDot: {
-    width: 8,
-    height: 40,
+  categoryBar: {
+    width: 4,
+    height: 44,
     borderRadius: 4,
-    marginLeft: 12,
+    marginRight: 2,
   },
   content: {
     flex: 1,
+    paddingHorizontal: 10,
   },
   topRow: {
     flexDirection: 'row',
@@ -116,12 +128,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     flex: 1,
-    textAlign: 'right',
+    marginRight: 8,
   },
   amount: {
     fontSize: 15,
     fontWeight: '700',
-    marginRight: 8,
+    flexShrink: 0,
   },
   bottomRow: {
     flexDirection: 'row',
@@ -131,7 +143,7 @@ const styles = StyleSheet.create({
   tags: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   tag: {
     fontSize: 11,
@@ -146,14 +158,21 @@ const styles = StyleSheet.create({
   },
   amountYmr: {
     fontSize: 12,
-    marginRight: 8,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 2,
   },
   paymentMethod: {
     fontSize: 11,
-    marginTop: 2,
-    textAlign: 'right',
+  },
+  rateTag: {
+    fontSize: 10,
   },
   deleteBtn: {
     padding: 4,
+    marginLeft: 4,
   },
 });

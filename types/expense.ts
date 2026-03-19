@@ -6,9 +6,21 @@ export interface Expense {
   description: string;
   amount_sar: number;
   amount_ymr: number;
+  exchange_rate: number;
   payment_method: string;
   notes: string | null;
   created_at: string;
+  user_id?: string;
+}
+
+export interface MonthlyEstimate {
+  id: string;
+  main_category: string;
+  sub_category: string;
+  description: string;
+  amount_sar: number;
+  amount_ymr: number;
+  notes: string | null;
   user_id?: string;
 }
 

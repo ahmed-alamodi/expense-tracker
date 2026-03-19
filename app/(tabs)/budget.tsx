@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,16 +11,19 @@ import {
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useMonthlyTotal } from '@/hooks/useExpenses';
 import { isConfigured } from '@/lib/supabase';
 import { getBudgets, upsertBudget } from '@/lib/database';
-import { Budget } from '@/types/expense';
-import { DEFAULT_CATEGORIES, CATEGORY_COLORS } from '@/constants/categories';
+import { Budget, CategoryGroup } from '@/types/expense';
+import { CATEGORY_COLORS } from '@/constants/categories';
+import { getCategories } from '@/lib/storage';
 import MonthPicker from '@/components/MonthPicker';
 
 export default function BudgetScreen() {
   const colors = useThemeColor();
+  const { t } = useTranslation();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -29,6 +32,7 @@ export default function BudgetScreen() {
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>({});
   const [loadingBudgets, setLoadingBudgets] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [categories, setCategories] = useState<CategoryGroup[]>([]);
 
   const { totalSar, byCategory, refresh: refreshExpenses } = useMonthlyTotal(month, year);
 
@@ -36,8 +40,9 @@ export default function BudgetScreen() {
     if (!isConfigured) { setLoadingBudgets(false); return; }
     setLoadingBudgets(true);
     try {
-      const data = await getBudgets(month, year);
+      const [data, cats] = await Promise.all([getBudgets(month, year), getCategories()]);
       setBudgets(data);
+      setCategories(cats);
       const totalBudget = data.find(b => b.category === 'total');
       setTotalBudgetInput(totalBudget ? totalBudget.amount.toString() : '');
       const catMap: Record<string, string> = {};
@@ -91,10 +96,10 @@ export default function BudgetScreen() {
           });
         }
       }
-      Alert.alert('تم', 'تم حفظ الميزانية بنجاح');
+      Alert.alert(t('common.done'), t('budget.budgetSaved'));
       fetchBudgets();
     } catch (err: any) {
-      Alert.alert('خطأ', err.message);
+      Alert.alert(t('common.error'), err.message);
     } finally {
       setSaving(false);
     }
@@ -127,10 +132,10 @@ export default function BudgetScreen() {
 
       {/* Total Budget */}
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <Text style={[styles.cardTitle, { color: colors.text }]}>الميزانية الإجمالية</Text>
+        <Text style={[styles.cardTitle, { color: colors.text }]}>{t('budget.totalBudget')}</Text>
 
         <View style={styles.inputRow}>
-          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>المبلغ (ر.س):</Text>
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>{t('budget.amountSar')}</Text>
           <TextInput
             style={[styles.budgetInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
             value={totalBudgetInput}
@@ -146,7 +151,7 @@ export default function BudgetScreen() {
           <View style={styles.progressSection}>
             <View style={styles.progressHeader}>
               <Text style={[styles.progressLabel, { color: colors.text }]}>
-                المصروف: {totalSar.toFixed(2)} / {totalBudget.toFixed(2)} ر.س
+                {t('budget.spent')} {totalSar.toFixed(2)} / {totalBudget.toFixed(2)} {t('common.sar')}
               </Text>
               <Text style={[styles.pctBadge, { color: getStatusColor(totalPct) }]}>
                 {totalPct.toFixed(0)}%
@@ -170,8 +175,8 @@ export default function BudgetScreen() {
               ]}
             >
               {totalRemaining >= 0
-                ? `متبقي: ${totalRemaining.toFixed(2)} ر.س`
-                : `تجاوز: ${Math.abs(totalRemaining).toFixed(2)} ر.س`}
+                ? `${t('budget.remaining')} ${totalRemaining.toFixed(2)} ${t('common.sar')}`
+                : `${t('budget.exceeded')} ${Math.abs(totalRemaining).toFixed(2)} ${t('common.sar')}`}
             </Text>
           </View>
         )}
@@ -179,9 +184,9 @@ export default function BudgetScreen() {
 
       {/* Category Budgets */}
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <Text style={[styles.cardTitle, { color: colors.text }]}>ميزانية كل فئة</Text>
+        <Text style={[styles.cardTitle, { color: colors.text }]}>{t('budget.categoryBudget')}</Text>
 
-        {DEFAULT_CATEGORIES.map(cat => {
+        {categories.map(cat => {
           const spent = byCategory[cat.main]?.sar || 0;
           const budgetVal = parseFloat(categoryBudgets[cat.main] || '0');
           const pct = budgetVal > 0 ? (spent / budgetVal) * 100 : 0;
@@ -195,7 +200,7 @@ export default function BudgetScreen() {
                   <Text style={[styles.catName, { color: colors.text }]}>{cat.main}</Text>
                 </View>
                 <Text style={[styles.spentText, { color: colors.textSecondary }]}>
-                  {spent.toFixed(2)} ر.س
+                  {spent.toFixed(2)} {t('common.sar')}
                 </Text>
               </View>
               <TextInput
@@ -204,7 +209,7 @@ export default function BudgetScreen() {
                 onChangeText={val =>
                   setCategoryBudgets(prev => ({ ...prev, [cat.main]: val }))
                 }
-                placeholder="الميزانية (ر.س)"
+                placeholder={t('budget.budgetSar')}
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="decimal-pad"
                 textAlign="right"
@@ -234,7 +239,7 @@ export default function BudgetScreen() {
       >
         <Ionicons name="save" size={20} color="#FFF" />
         <Text style={styles.saveBtnText}>
-          {saving ? 'جاري الحفظ...' : 'حفظ الميزانية'}
+          {saving ? t('common.saving') : t('budget.saveBudget')}
         </Text>
       </TouchableOpacity>
     </ScrollView>
@@ -254,7 +259,6 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    textAlign: 'right',
     marginBottom: 12,
   },
   inputRow: {
@@ -289,7 +293,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     marginTop: 4,
-    textAlign: 'right',
   },
   catSection: {
     marginBottom: 14,

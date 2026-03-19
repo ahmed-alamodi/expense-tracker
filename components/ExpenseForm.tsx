@@ -14,10 +14,10 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { Expense } from '@/types/expense';
-import { DEFAULT_CATEGORIES } from '@/constants/categories';
+import { useTranslation } from 'react-i18next';
+import { Expense, CategoryGroup } from '@/types/expense';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { getExchangeRate, getPaymentMethods, sarToYmr, ymrToSar } from '@/lib/storage';
+import { getExchangeRate, getPaymentMethods, getCategories, sarToYmr, ymrToSar } from '@/lib/storage';
 
 interface Props {
   initialData?: Partial<Expense>;
@@ -25,8 +25,9 @@ interface Props {
   submitLabel?: string;
 }
 
-export default function ExpenseForm({ initialData, onSubmit, submitLabel = 'حفظ' }: Props) {
+export default function ExpenseForm({ initialData, onSubmit, submitLabel }: Props) {
   const colors = useThemeColor();
+  const { t, i18n } = useTranslation();
   const [date, setDate] = useState(new Date(initialData?.date || new Date()));
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [mainCategory, setMainCategory] = useState(initialData?.main_category || '');
@@ -36,20 +37,26 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel = 'حف
   const [amountYmr, setAmountYmr] = useState(initialData?.amount_ymr?.toString() || '');
   const [paymentMethod, setPaymentMethod] = useState(initialData?.payment_method || '');
   const [notes, setNotes] = useState(initialData?.notes || '');
-  const [exchangeRate, setExchangeRate] = useState(410);
+  const [exchangeRate, setExchangeRate] = useState(initialData?.exchange_rate || 410);
   const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
+  const [categories, setCategories] = useState<CategoryGroup[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   const [showMainCatPicker, setShowMainCatPicker] = useState(false);
   const [showSubCatPicker, setShowSubCatPicker] = useState(false);
   const [showPaymentPicker, setShowPaymentPicker] = useState(false);
 
+  const label = submitLabel || t('common.save');
+
   useEffect(() => {
-    getExchangeRate().then(setExchangeRate);
+    if (!initialData?.exchange_rate) {
+      getExchangeRate().then(setExchangeRate);
+    }
     getPaymentMethods().then(setPaymentMethods);
+    getCategories().then(setCategories);
   }, []);
 
-  const subCategories = DEFAULT_CATEGORIES.find(c => c.main === mainCategory)?.subs || [];
+  const subCategories = categories.find(c => c.main === mainCategory)?.subs || [];
 
   const handleSarChange = (val: string) => {
     setAmountSar(val);
@@ -69,11 +76,11 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel = 'حف
 
   const handleSubmit = async () => {
     if (!mainCategory) {
-      Alert.alert('تنبيه', 'يرجى اختيار الفئة الرئيسية');
+      Alert.alert(t('common.warning'), t('form.selectMainCategoryAlert'));
       return;
     }
     if (!amountSar && !amountYmr) {
-      Alert.alert('تنبيه', 'يرجى إدخال المبلغ');
+      Alert.alert(t('common.warning'), t('form.enterAmount'));
       return;
     }
 
@@ -86,15 +93,29 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel = 'حف
         description,
         amount_sar: parseFloat(amountSar) || 0,
         amount_ymr: parseFloat(amountYmr) || 0,
+        exchange_rate: exchangeRate,
         payment_method: paymentMethod,
         notes: notes || null,
       });
+
+      if (!initialData) {
+        setDate(new Date());
+        setMainCategory('');
+        setSubCategory('');
+        setDescription('');
+        setAmountSar('');
+        setAmountYmr('');
+        setPaymentMethod('');
+        setNotes('');
+      }
     } catch (err: any) {
-      Alert.alert('خطأ', err.message || 'حدث خطأ');
+      Alert.alert(t('common.error'), err.message || t('form.errorOccurred'));
     } finally {
       setSubmitting(false);
     }
   };
+
+  const locale = i18n.language === 'ar' ? 'ar-SA' : 'en-US';
 
   const renderPickerModal = (
     visible: boolean,
@@ -143,13 +164,13 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel = 'حف
         keyboardShouldPersistTaps="handled"
       >
         {/* Date */}
-        <Text style={[styles.label, { color: colors.text }]}>التاريخ</Text>
+        <Text style={[styles.label, { color: colors.text }]}>{t('form.date')}</Text>
         <TouchableOpacity
           style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border }]}
           onPress={() => setShowDatePicker(true)}
         >
           <Text style={{ color: colors.text }}>
-            {date.toLocaleDateString('ar-SA')}
+            {date.toLocaleDateString(locale)}
           </Text>
           <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
@@ -166,41 +187,41 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel = 'حف
         )}
 
         {/* Main Category */}
-        <Text style={[styles.label, { color: colors.text }]}>الفئة الرئيسية</Text>
+        <Text style={[styles.label, { color: colors.text }]}>{t('form.mainCategory')}</Text>
         <TouchableOpacity
           style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border }]}
           onPress={() => setShowMainCatPicker(true)}
         >
           <Text style={{ color: mainCategory ? colors.text : colors.textSecondary }}>
-            {mainCategory || 'اختر الفئة الرئيسية'}
+            {mainCategory || t('form.selectMainCategory')}
           </Text>
           <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
         {renderPickerModal(
           showMainCatPicker,
           () => setShowMainCatPicker(false),
-          DEFAULT_CATEGORIES.map(c => c.main),
+          categories.map(c => c.main),
           (item) => {
             setMainCategory(item);
             setSubCategory('');
           },
-          'الفئة الرئيسية'
+          t('form.mainCategory')
         )}
 
         {/* Sub Category */}
-        <Text style={[styles.label, { color: colors.text }]}>الفئة الفرعية</Text>
+        <Text style={[styles.label, { color: colors.text }]}>{t('form.subCategory')}</Text>
         <TouchableOpacity
           style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border }]}
           onPress={() => {
             if (!mainCategory) {
-              Alert.alert('تنبيه', 'اختر الفئة الرئيسية أولاً');
+              Alert.alert(t('common.warning'), t('form.selectMainFirst'));
               return;
             }
             setShowSubCatPicker(true);
           }}
         >
           <Text style={{ color: subCategory ? colors.text : colors.textSecondary }}>
-            {subCategory || 'اختر الفئة الفرعية'}
+            {subCategory || t('form.selectSubCategory')}
           </Text>
           <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
@@ -209,16 +230,16 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel = 'حف
           () => setShowSubCatPicker(false),
           subCategories,
           setSubCategory,
-          'الفئة الفرعية'
+          t('form.subCategory')
         )}
 
         {/* Description */}
-        <Text style={[styles.label, { color: colors.text }]}>الوصف</Text>
+        <Text style={[styles.label, { color: colors.text }]}>{t('form.description')}</Text>
         <TextInput
           style={[styles.textInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
           value={description}
           onChangeText={setDescription}
-          placeholder="مثال: وجبة عشاء"
+          placeholder={t('form.descPlaceholder')}
           placeholderTextColor={colors.textSecondary}
           textAlign="right"
         />
@@ -226,7 +247,7 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel = 'حف
         {/* Amounts */}
         <View style={styles.row}>
           <View style={styles.halfField}>
-            <Text style={[styles.label, { color: colors.text }]}>المبلغ (ر.س)</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{t('form.amountSar')}</Text>
             <TextInput
               style={[styles.textInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
               value={amountSar}
@@ -238,7 +259,7 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel = 'حف
             />
           </View>
           <View style={styles.halfField}>
-            <Text style={[styles.label, { color: colors.text }]}>المبلغ (يمني)</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{t('form.amountYmr')}</Text>
             <TextInput
               style={[styles.textInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
               value={amountYmr}
@@ -251,17 +272,17 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel = 'حف
           </View>
         </View>
         <Text style={[styles.rateHint, { color: colors.textSecondary }]}>
-          سعر الصرف: 1 ر.س = {exchangeRate} ي.ر
+          {t('form.exchangeRateHint')} {exchangeRate} {t('common.ymr')}
         </Text>
 
         {/* Payment Method */}
-        <Text style={[styles.label, { color: colors.text }]}>طريقة الدفع</Text>
+        <Text style={[styles.label, { color: colors.text }]}>{t('form.paymentMethod')}</Text>
         <TouchableOpacity
           style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border }]}
           onPress={() => setShowPaymentPicker(true)}
         >
           <Text style={{ color: paymentMethod ? colors.text : colors.textSecondary }}>
-            {paymentMethod || 'اختر طريقة الدفع'}
+            {paymentMethod || t('form.selectPaymentMethod')}
           </Text>
           <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
@@ -270,16 +291,16 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel = 'حف
           () => setShowPaymentPicker(false),
           paymentMethods,
           setPaymentMethod,
-          'طريقة الدفع'
+          t('form.paymentMethod')
         )}
 
         {/* Notes */}
-        <Text style={[styles.label, { color: colors.text }]}>ملاحظات</Text>
+        <Text style={[styles.label, { color: colors.text }]}>{t('form.notes')}</Text>
         <TextInput
           style={[styles.textInput, styles.textArea, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
           value={notes}
           onChangeText={setNotes}
-          placeholder="ملاحظات إضافية (اختياري)"
+          placeholder={t('form.notesPlaceholder')}
           placeholderTextColor={colors.textSecondary}
           multiline
           numberOfLines={3}
@@ -295,7 +316,7 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel = 'حف
         >
           <Ionicons name="checkmark-circle" size={22} color="#FFF" />
           <Text style={styles.submitText}>
-            {submitting ? 'جاري الحفظ...' : submitLabel}
+            {submitting ? t('common.saving') : label}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -316,7 +337,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 12,
     marginBottom: 6,
-    textAlign: 'right',
   },
   input: {
     flexDirection: 'row',
@@ -346,7 +366,6 @@ const styles = StyleSheet.create({
   },
   rateHint: {
     fontSize: 11,
-    textAlign: 'right',
     marginTop: 4,
   },
   submitBtn: {
@@ -391,6 +410,5 @@ const styles = StyleSheet.create({
   },
   modalItemText: {
     fontSize: 16,
-    textAlign: 'right',
   },
 });

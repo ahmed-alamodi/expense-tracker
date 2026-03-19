@@ -10,10 +10,14 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as XLSX from 'xlsx';
+import { useTranslation } from 'react-i18next';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { useAppTheme, ThemeMode } from '@/lib/theme-context';
+import { useLanguage, Language } from '@/lib/language-context';
 import { isConfigured } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import {
@@ -26,7 +30,11 @@ import { getExpenses } from '@/lib/database';
 
 export default function SettingsScreen() {
   const colors = useThemeColor();
+  const router = useRouter();
   const { user, signOut } = useAuth();
+  const { t } = useTranslation();
+  const { themeMode, setThemeMode } = useAppTheme();
+  const { language, setLanguage } = useLanguage();
   const [rate, setRate] = useState('');
   const [methods, setMethods] = useState<string[]>([]);
   const [newMethod, setNewMethod] = useState('');
@@ -46,17 +54,17 @@ export default function SettingsScreen() {
   const handleSaveRate = async () => {
     const val = parseFloat(rate);
     if (isNaN(val) || val <= 0) {
-      Alert.alert('خطأ', 'يرجى إدخال سعر صرف صحيح');
+      Alert.alert(t('common.error'), t('settings.invalidRate'));
       return;
     }
     await setExchangeRate(val);
-    Alert.alert('تم', 'تم حفظ سعر الصرف');
+    Alert.alert(t('common.done'), t('settings.rateSaved'));
   };
 
   const handleAddMethod = async () => {
     if (!newMethod.trim()) return;
     if (methods.includes(newMethod.trim())) {
-      Alert.alert('تنبيه', 'طريقة الدفع موجودة بالفعل');
+      Alert.alert(t('common.warning'), t('settings.methodExists'));
       return;
     }
     const updated = [...methods, newMethod.trim()];
@@ -66,10 +74,10 @@ export default function SettingsScreen() {
   };
 
   const handleRemoveMethod = async (method: string) => {
-    Alert.alert('حذف', `حذف "${method}"؟`, [
-      { text: 'إلغاء', style: 'cancel' },
+    Alert.alert(t('common.delete'), `${t('common.delete')} "${method}"?`, [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'حذف',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           const updated = methods.filter(m => m !== method);
@@ -82,32 +90,33 @@ export default function SettingsScreen() {
 
   const handleExport = async () => {
     if (!isConfigured) {
-      Alert.alert('تنبيه', 'يرجى إعداد Supabase أولاً');
+      Alert.alert(t('common.warning'), t('settings.setupSupabase'));
       return;
     }
     setExporting(true);
     try {
       const expenses = await getExpenses();
       if (expenses.length === 0) {
-        Alert.alert('تنبيه', 'لا توجد مصاريف للتصدير');
+        Alert.alert(t('common.warning'), t('settings.noExpensesToExport'));
         setExporting(false);
         return;
       }
 
       const rows = expenses.map(e => ({
-        'التاريخ': e.date,
-        'الفئة الرئيسية': e.main_category,
-        'الفئة الفرعية': e.sub_category,
-        'الوصف': e.description,
-        'المبلغ (ر.س)': e.amount_sar,
-        'المبلغ (يمني)': e.amount_ymr,
-        'طريقة الدفع': e.payment_method,
-        'ملاحظات': e.notes || '',
+        [t('form.date')]: e.date,
+        [t('form.mainCategory')]: e.main_category,
+        [t('form.subCategory')]: e.sub_category,
+        [t('form.description')]: e.description,
+        [t('form.amountSar')]: e.amount_sar,
+        [t('form.amountYmr')]: e.amount_ymr,
+        [t('settings.exchangeRate')]: e.exchange_rate,
+        [t('form.paymentMethod')]: e.payment_method,
+        [t('form.notes')]: e.notes || '',
       }));
 
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'المصاريف');
+      XLSX.utils.book_append_sheet(wb, ws, t('home.expenses'));
 
       const wbout = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
       const fileName = `expenses_${new Date().toISOString().split('T')[0]}.xlsx`;
@@ -118,17 +127,28 @@ export default function SettingsScreen() {
       if (canShare) {
         await Sharing.shareAsync(file.uri, {
           mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          dialogTitle: 'تصدير المصاريف',
+          dialogTitle: t('settings.exportDialogTitle'),
         });
       } else {
-        Alert.alert('تم', `تم حفظ الملف: ${fileName}`);
+        Alert.alert(t('common.done'), `${t('settings.fileSaved')} ${fileName}`);
       }
     } catch (err: any) {
-      Alert.alert('خطأ', err.message || 'فشل التصدير');
+      Alert.alert(t('common.error'), err.message || t('settings.exportFailed'));
     } finally {
       setExporting(false);
     }
   };
+
+  const themeModes: { key: ThemeMode; label: string }[] = [
+    { key: 'system', label: t('settings.themeSystem') },
+    { key: 'light', label: t('settings.themeLight') },
+    { key: 'dark', label: t('settings.themeDark') },
+  ];
+
+  const languages: { key: Language; label: string }[] = [
+    { key: 'ar', label: 'العربية' },
+    { key: 'en', label: 'English' },
+  ];
 
   if (loading) {
     return (
@@ -143,14 +163,72 @@ export default function SettingsScreen() {
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={{ paddingBottom: 40 }}
     >
+      {/* Theme */}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.cardHeader}>
+          <Ionicons name="color-palette-outline" size={22} color={colors.tint} />
+          <Text style={[styles.cardTitle, { color: colors.text }]}>{t('settings.theme')}</Text>
+        </View>
+        <View style={[styles.segmented, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          {themeModes.map(item => (
+            <TouchableOpacity
+              key={item.key}
+              style={[
+                styles.segmentedBtn,
+                themeMode === item.key && { backgroundColor: colors.tint },
+              ]}
+              onPress={() => setThemeMode(item.key)}
+            >
+              <Text
+                style={[
+                  styles.segmentedText,
+                  { color: themeMode === item.key ? '#FFF' : colors.text },
+                ]}
+              >
+                {item.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* Language */}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.cardHeader}>
+          <Ionicons name="language-outline" size={22} color={colors.tint} />
+          <Text style={[styles.cardTitle, { color: colors.text }]}>{t('settings.language')}</Text>
+        </View>
+        <View style={[styles.segmented, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          {languages.map(item => (
+            <TouchableOpacity
+              key={item.key}
+              style={[
+                styles.segmentedBtn,
+                language === item.key && { backgroundColor: colors.tint },
+              ]}
+              onPress={() => setLanguage(item.key)}
+            >
+              <Text
+                style={[
+                  styles.segmentedText,
+                  { color: language === item.key ? '#FFF' : colors.text },
+                ]}
+              >
+                {item.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
       {/* Export */}
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.cardHeader}>
           <Ionicons name="download-outline" size={22} color={colors.tint} />
-          <Text style={[styles.cardTitle, { color: colors.text }]}>تصدير البيانات</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>{t('settings.exportData')}</Text>
         </View>
         <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
-          تصدير جميع المصاريف كملف Excel
+          {t('settings.exportDesc')}
         </Text>
         <TouchableOpacity
           style={[styles.actionBtn, { backgroundColor: colors.tint, opacity: exporting ? 0.6 : 1 }]}
@@ -163,7 +241,7 @@ export default function SettingsScreen() {
             <Ionicons name="document-outline" size={18} color="#FFF" />
           )}
           <Text style={styles.actionBtnText}>
-            {exporting ? 'جاري التصدير...' : 'تصدير Excel'}
+            {exporting ? t('settings.exporting') : t('settings.exportExcel')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -172,10 +250,10 @@ export default function SettingsScreen() {
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.cardHeader}>
           <Ionicons name="swap-horizontal" size={22} color={colors.tint} />
-          <Text style={[styles.cardTitle, { color: colors.text }]}>سعر الصرف</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>{t('settings.exchangeRate')}</Text>
         </View>
         <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
-          1 ريال سعودي = ؟ ريال يمني
+          {t('settings.exchangeRateDesc')}
         </Text>
         <View style={styles.rateRow}>
           <TextInput
@@ -189,7 +267,7 @@ export default function SettingsScreen() {
             style={[styles.smallBtn, { backgroundColor: colors.tint }]}
             onPress={handleSaveRate}
           >
-            <Text style={styles.smallBtnText}>حفظ</Text>
+            <Text style={styles.smallBtnText}>{t('common.save')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -198,7 +276,7 @@ export default function SettingsScreen() {
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.cardHeader}>
           <Ionicons name="card-outline" size={22} color={colors.tint} />
-          <Text style={[styles.cardTitle, { color: colors.text }]}>طرق الدفع</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>{t('settings.paymentMethods')}</Text>
         </View>
 
         {methods.map(method => (
@@ -215,7 +293,7 @@ export default function SettingsScreen() {
             style={[styles.addInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
             value={newMethod}
             onChangeText={setNewMethod}
-            placeholder="طريقة دفع جديدة"
+            placeholder={t('settings.newPaymentMethod')}
             placeholderTextColor={colors.textSecondary}
             textAlign="right"
           />
@@ -228,21 +306,55 @@ export default function SettingsScreen() {
         </View>
       </View>
 
+      {/* Monthly Estimates */}
+      <TouchableOpacity
+        style={[styles.card, styles.navCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+        onPress={() => router.push('/estimates' as any)}
+      >
+        <View style={styles.navCardContent}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="calculator-outline" size={22} color={colors.tint} />
+            <Text style={[styles.cardTitle, { color: colors.text }]}>{t('settings.monthlyEstimates')}</Text>
+          </View>
+          <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
+            {t('settings.monthlyEstimatesDesc')}
+          </Text>
+        </View>
+        <Ionicons name="chevron-back" size={20} color={colors.textSecondary} />
+      </TouchableOpacity>
+
+      {/* Categories Management */}
+      <TouchableOpacity
+        style={[styles.card, styles.navCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+        onPress={() => router.push('/categories' as any)}
+      >
+        <View style={styles.navCardContent}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="list-outline" size={22} color={colors.tint} />
+            <Text style={[styles.cardTitle, { color: colors.text }]}>{t('settings.manageCategories')}</Text>
+          </View>
+          <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
+            {t('settings.manageCategoriesDesc')}
+          </Text>
+        </View>
+        <Ionicons name="chevron-back" size={20} color={colors.textSecondary} />
+      </TouchableOpacity>
+
       {/* App Info */}
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.cardHeader}>
           <Ionicons name="information-circle-outline" size={22} color={colors.tint} />
-          <Text style={[styles.cardTitle, { color: colors.text }]}>عن التطبيق</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>{t('settings.aboutApp')}</Text>
         </View>
         <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
-          تطبيق تتبع المصاريف - النسخة 1.0.0
+          {t('settings.appDesc')}
         </Text>
         <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
-          لتتبع مصاريفك الشهرية بالريال السعودي والريال اليمني
+          {t('settings.appPurpose')}
         </Text>
         {user && (
           <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
-            الحساب: {user.email}
+            {t('settings.account')} {user.email}
           </Text>
         )}
       </View>
@@ -251,10 +363,10 @@ export default function SettingsScreen() {
       <TouchableOpacity
         style={[styles.signOutBtn, { borderColor: colors.danger }]}
         onPress={() => {
-          Alert.alert('تسجيل الخروج', 'هل أنت متأكد؟', [
-            { text: 'إلغاء', style: 'cancel' },
+          Alert.alert(t('settings.signOut'), t('settings.signOutConfirm'), [
+            { text: t('common.cancel'), style: 'cancel' },
             {
-              text: 'خروج',
+              text: t('settings.signOut'),
               style: 'destructive',
               onPress: signOut,
             },
@@ -263,7 +375,7 @@ export default function SettingsScreen() {
       >
         <Ionicons name="log-out-outline" size={20} color={colors.danger} />
         <Text style={[styles.signOutText, { color: colors.danger }]}>
-          تسجيل الخروج
+          {t('settings.signOut')}
         </Text>
       </TouchableOpacity>
     </ScrollView>
@@ -293,7 +405,22 @@ const styles = StyleSheet.create({
   cardDesc: {
     fontSize: 13,
     marginBottom: 8,
-    textAlign: 'right',
+  },
+  segmented: {
+    flexDirection: 'row',
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 3,
+  },
+  segmentedBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  segmentedText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   actionBtn: {
     flexDirection: 'row',
@@ -354,6 +481,12 @@ const styles = StyleSheet.create({
     padding: 10,
     fontSize: 14,
   },
+  navCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  navCardContent: { flex: 1 },
   signOutBtn: {
     flexDirection: 'row',
     justifyContent: 'center',

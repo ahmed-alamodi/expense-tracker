@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,15 +8,18 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useExpenses, useMonthlyTotal } from '@/hooks/useExpenses';
 import MonthPicker from '@/components/MonthPicker';
 import ExpenseCard from '@/components/ExpenseCard';
 import SearchFilter, { Filters } from '@/components/SearchFilter';
 import { deleteExpense } from '@/lib/database';
+import { getCategories, getPaymentMethods } from '@/lib/storage';
 
 export default function HomeScreen() {
   const colors = useThemeColor();
+  const { t } = useTranslation();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -25,6 +28,13 @@ export default function HomeScreen() {
     mainCategory: '',
     paymentMethod: '',
   });
+  const [categoryNames, setCategoryNames] = useState<string[]>([]);
+  const [paymentMethodsList, setPaymentMethodsList] = useState<string[]>([]);
+
+  useEffect(() => {
+    getCategories().then(cats => setCategoryNames(cats.map(c => c.main)));
+    getPaymentMethods().then(setPaymentMethodsList);
+  }, []);
 
   const { expenses, loading, refresh } = useExpenses({
     month,
@@ -110,24 +120,24 @@ export default function HomeScreen() {
             {/* Summary Card */}
             <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Text style={[styles.summaryTitle, { color: colors.textSecondary }]}>
-                إجمالي المصاريف
+                {t('home.totalExpenses')}
               </Text>
               <View style={styles.summaryAmounts}>
-                <View style={styles.amountBlock}>
-                  <Text style={[styles.amountValue, { color: colors.expense }]}>
-                    {totalSar.toFixed(2)}
-                  </Text>
-                  <Text style={[styles.amountLabel, { color: colors.textSecondary }]}>
-                    ريال سعودي
-                  </Text>
-                </View>
-                <View style={[styles.divider, { backgroundColor: colors.border }]} />
                 <View style={styles.amountBlock}>
                   <Text style={[styles.amountValue, { color: colors.expense }]}>
                     {totalYmr.toLocaleString()}
                   </Text>
                   <Text style={[styles.amountLabel, { color: colors.textSecondary }]}>
-                    ريال يمني
+                    {t('common.ymrCurrency')}
+                  </Text>
+                </View>
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <View style={styles.amountBlock}>
+                  <Text style={[styles.amountValue, { color: colors.expense }]}>
+                    {totalSar.toFixed(2)}
+                  </Text>
+                  <Text style={[styles.amountLabel, { color: colors.textSecondary }]}>
+                    {t('common.sarCurrency')}
                   </Text>
                 </View>
               </View>
@@ -135,24 +145,29 @@ export default function HomeScreen() {
               {topCategories.length > 0 && (
                 <View style={styles.topCats}>
                   <Text style={[styles.topCatsTitle, { color: colors.textSecondary }]}>
-                    أعلى الفئات
+                    {t('home.topCategories')}
                   </Text>
                   {topCategories.map(([cat, data]) => (
                     <View key={cat} style={styles.topCatRow}>
-                      <Text style={[styles.topCatName, { color: colors.text }]}>{cat}</Text>
                       <Text style={[styles.topCatAmount, { color: colors.textSecondary }]}>
-                        {data.sar.toFixed(2)} ر.س ({data.count})
+                        {data.sar.toFixed(2)} {t('common.sar')} ({data.count})
                       </Text>
+                      <Text style={[styles.topCatName, { color: colors.text }]}>{cat}</Text>
                     </View>
                   ))}
                 </View>
               )}
             </View>
 
-            <SearchFilter filters={filters} onFiltersChange={setFilters} />
+            <SearchFilter
+              filters={filters}
+              onFiltersChange={setFilters}
+              categoryNames={categoryNames}
+              paymentMethods={paymentMethodsList}
+            />
 
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              المصاريف ({expenses.length})
+              {t('home.expenses')} ({expenses.length})
             </Text>
           </View>
         }
@@ -161,7 +176,7 @@ export default function HomeScreen() {
             <ActivityIndicator style={{ marginTop: 40 }} color={colors.tint} />
           ) : (
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              لا توجد مصاريف لهذا الشهر
+              {t('home.noExpenses')}
             </Text>
           )
         }
@@ -220,19 +235,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginBottom: 6,
-    textAlign: 'right',
   },
   topCatRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: 3,
   },
   topCatName: {
     fontSize: 13,
     fontWeight: '500',
+    flex: 1,
   },
   topCatAmount: {
     fontSize: 13,
+    marginLeft: 8,
   },
   sectionTitle: {
     fontSize: 15,
@@ -240,7 +257,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 16,
     marginBottom: 8,
-    textAlign: 'right',
   },
   emptyText: {
     textAlign: 'center',
