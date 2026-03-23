@@ -1,4 +1,4 @@
-import { CategoryGroup } from '@/types/expense';
+import { CategoryGroup, CurrencyConfig } from '@/types/expense';
 
 export const DEFAULT_CATEGORIES: CategoryGroup[] = [
   { main: 'طعام', subs: ['مطاعم', 'بقالة', 'مشروبات', 'وجبات سريعة'] },
@@ -16,6 +16,12 @@ export const DEFAULT_CATEGORIES: CategoryGroup[] = [
 export const DEFAULT_PAYMENT_METHODS = ['البسري', 'العمقي', 'كاش', 'بطاقة بنكية'];
 
 export const DEFAULT_EXCHANGE_RATE = 410;
+
+export const DEFAULT_CURRENCY_CONFIG: CurrencyConfig = {
+  primary: { code: 'SAR', name: 'ريال سعودي', symbol: 'ر.س' },
+  secondary: { code: 'YMR', name: 'ريال يمني', symbol: 'ي.ر' },
+  exchangeRate: DEFAULT_EXCHANGE_RATE,
+};
 
 export const CATEGORY_COLORS: Record<string, string> = {
   'طعام': '#FF6B6B',

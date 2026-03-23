@@ -1,5 +1,5 @@
 import { supabase, isConfigured } from './supabase';
-import { Expense, Budget, MonthlyEstimate } from '@/types/expense';
+import { Expense, Budget, MonthlyEstimate, Tag, CategoryGroup } from '@/types/expense';
 
 function checkConfigured() {
   if (!isConfigured) {
@@ -217,4 +217,105 @@ export async function updateMonthlyEstimate(id: string, estimate: Partial<Monthl
 export async function deleteMonthlyEstimate(id: string) {
   const { error } = await supabase.from('monthly_estimates').delete().eq('id', id);
   if (error) throw error;
+}
+
+// Categories functions
+export async function getRemoteCategories(): Promise<{ id: string; main_category: string; sub_categories: string[]; sort_order: number }[]> {
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*')
+    .order('sort_order', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function syncCategoriesToRemote(categories: CategoryGroup[]): Promise<void> {
+  const { data: existing } = await supabase
+    .from('categories')
+    .select('id');
+
+  if (existing && existing.length > 0) {
+    const ids = existing.map(e => e.id);
+    await supabase.from('categories').delete().in('id', ids);
+  }
+
+  if (categories.length > 0) {
+    const rows = categories.map((cat, idx) => ({
+      main_category: cat.main,
+      sub_categories: cat.subs,
+      sort_order: idx,
+    }));
+    const { error } = await supabase.from('categories').insert(rows);
+    if (error) throw error;
+  }
+}
+
+// Tags functions
+export async function getTags(): Promise<Tag[]> {
+  const { data, error } = await supabase
+    .from('tags')
+    .select('*')
+    .order('name', { ascending: true });
+  if (error) throw error;
+  return data as Tag[];
+}
+
+export async function createTag(tag: Omit<Tag, 'id' | 'user_id'>): Promise<Tag> {
+  const { data, error } = await supabase
+    .from('tags')
+    .insert(tag)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Tag;
+}
+
+export async function updateTag(id: string, tag: Partial<Tag>): Promise<Tag> {
+  const { data, error } = await supabase
+    .from('tags')
+    .update(tag)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Tag;
+}
+
+export async function deleteTag(id: string): Promise<void> {
+  await supabase.from('expenses').update({ tag_id: null }).eq('tag_id', id);
+  const { error } = await supabase.from('tags').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function getExpensesByTag(tagId: string): Promise<Expense[]> {
+  const { data, error } = await supabase
+    .from('expenses')
+    .select('*')
+    .eq('tag_id', tagId)
+    .order('date', { ascending: false });
+  if (error) throw error;
+  return data as Expense[];
+}
+
+export async function getTagStats(tagId: string) {
+  const { data, error } = await supabase
+    .from('expenses')
+    .select('amount_sar, amount_ymr, main_category')
+    .eq('tag_id', tagId);
+  if (error) throw error;
+
+  const expenses = data || [];
+  const totalSar = expenses.reduce((sum, e) => sum + (e.amount_sar || 0), 0);
+  const totalYmr = expenses.reduce((sum, e) => sum + (e.amount_ymr || 0), 0);
+
+  const byCategory: Record<string, { sar: number; ymr: number; count: number }> = {};
+  for (const e of expenses) {
+    const cat = e.main_category || 'أخرى';
+    if (!byCategory[cat]) byCategory[cat] = { sar: 0, ymr: 0, count: 0 };
+    byCategory[cat].sar += e.amount_sar || 0;
+    byCategory[cat].ymr += e.amount_ymr || 0;
+    byCategory[cat].count += 1;
+  }
+
+  return { totalSar, totalYmr, byCategory, count: expenses.length };
 }

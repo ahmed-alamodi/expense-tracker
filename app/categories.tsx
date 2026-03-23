@@ -1,9 +1,9 @@
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { getCategories, setCategories } from '@/lib/storage';
 import { CategoryGroup } from '@/types/expense';
+import { useSettings } from '@/lib/settings-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -23,8 +23,9 @@ export default function CategoriesScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { categories: settingsCategories, updateCategories } = useSettings();
   const [categories, setLocalCategories] = useState<CategoryGroup[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [showAddMain, setShowAddMain] = useState(false);
@@ -38,19 +39,14 @@ export default function CategoriesScreen() {
   const [editingSubIdx, setEditingSubIdx] = useState<number | null>(null);
   const [editSubName, setEditSubName] = useState('');
 
-  const fetchCategories = useCallback(async () => {
-    setLoading(true);
-    const cats = await getCategories();
-    setLocalCategories(cats);
-    setLoading(false);
-  }, []);
-
-  useFocusEffect(useCallback(() => { fetchCategories(); }, []));
+  useEffect(() => {
+    setLocalCategories(settingsCategories);
+  }, [settingsCategories]);
 
   const persist = async (updated: CategoryGroup[]) => {
     setSaving(true);
     try {
-      await setCategories(updated);
+      await updateCategories(updated);
       setLocalCategories(updated);
     } finally {
       setSaving(false);

@@ -20,13 +20,9 @@ import { useAppTheme, ThemeMode } from '@/lib/theme-context';
 import { useLanguage, Language } from '@/lib/language-context';
 import { isConfigured } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
-import {
-  getExchangeRate,
-  setExchangeRate,
-  getPaymentMethods,
-  setPaymentMethods,
-} from '@/lib/storage';
 import { getExpenses } from '@/lib/database';
+import { useAppLock } from '@/lib/app-lock-context';
+import { useSettings } from '@/lib/settings-context';
 
 export default function SettingsScreen() {
   const colors = useThemeColor();
@@ -35,21 +31,19 @@ export default function SettingsScreen() {
   const { t } = useTranslation();
   const { themeMode, setThemeMode } = useAppTheme();
   const { language, setLanguage } = useLanguage();
+  const { isLockEnabled, toggleLock } = useAppLock();
+  const { exchangeRate, paymentMethods, currencyConfig, updateExchangeRate, updatePaymentMethods, updateCurrencyConfig, ready } = useSettings();
   const [rate, setRate] = useState('');
   const [methods, setMethods] = useState<string[]>([]);
   const [newMethod, setNewMethod] = useState('');
   const [exporting, setExporting] = useState(false);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    (async () => {
-      const r = await getExchangeRate();
-      setRate(r.toString());
-      const m = await getPaymentMethods();
-      setMethods(m);
-      setLoading(false);
-    })();
-  }, []);
+    if (ready) {
+      setRate(exchangeRate.toString());
+      setMethods(paymentMethods);
+    }
+  }, [ready, exchangeRate, paymentMethods]);
 
   const handleSaveRate = async () => {
     const val = parseFloat(rate);
@@ -57,7 +51,7 @@ export default function SettingsScreen() {
       Alert.alert(t('common.error'), t('settings.invalidRate'));
       return;
     }
-    await setExchangeRate(val);
+    await updateCurrencyConfig({ ...currencyConfig, exchangeRate: val });
     Alert.alert(t('common.done'), t('settings.rateSaved'));
   };
 
@@ -69,7 +63,7 @@ export default function SettingsScreen() {
     }
     const updated = [...methods, newMethod.trim()];
     setMethods(updated);
-    await setPaymentMethods(updated);
+    await updatePaymentMethods(updated);
     setNewMethod('');
   };
 
@@ -82,7 +76,7 @@ export default function SettingsScreen() {
         onPress: async () => {
           const updated = methods.filter(m => m !== method);
           setMethods(updated);
-          await setPaymentMethods(updated);
+          await updatePaymentMethods(updated);
         },
       },
     ]);
@@ -150,7 +144,7 @@ export default function SettingsScreen() {
     { key: 'en', label: 'English' },
   ];
 
-  if (loading) {
+  if (!ready) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator color={colors.tint} size="large" />
@@ -221,6 +215,36 @@ export default function SettingsScreen() {
         </View>
       </View>
 
+      {/* App Lock */}
+      <TouchableOpacity
+        style={[styles.card, styles.navCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+        onPress={async () => {
+          const success = await toggleLock();
+          if (!success && !isLockEnabled) {
+            Alert.alert(t('common.warning'), t('settings.appLockNotSupported'));
+          }
+        }}
+      >
+        <View style={styles.navCardContent}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="lock-closed-outline" size={22} color={colors.tint} />
+            <Text style={[styles.cardTitle, { color: colors.text }]}>{t('settings.appLock')}</Text>
+          </View>
+          <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
+            {t('settings.appLockDesc')}
+          </Text>
+        </View>
+        <View style={[
+          styles.lockToggle,
+          { backgroundColor: isLockEnabled ? colors.tint : (colors.border || '#D1D5DB') },
+        ]}>
+          <View style={[
+            styles.lockToggleKnob,
+            isLockEnabled ? styles.lockToggleKnobOn : styles.lockToggleKnobOff,
+          ]} />
+        </View>
+      </TouchableOpacity>
+
       {/* Export */}
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.cardHeader}>
@@ -246,14 +270,59 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Exchange Rate */}
+      {/* Currency Configuration */}
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.cardHeader}>
-          <Ionicons name="swap-horizontal" size={22} color={colors.tint} />
-          <Text style={[styles.cardTitle, { color: colors.text }]}>{t('settings.exchangeRate')}</Text>
+          <Ionicons name="cash-outline" size={22} color={colors.tint} />
+          <Text style={[styles.cardTitle, { color: colors.text }]}>{t('settings.currencies')}</Text>
         </View>
         <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
-          {t('settings.exchangeRateDesc')}
+          {t('settings.currenciesDesc')}
+        </Text>
+
+        <Text style={[styles.subLabel, { color: colors.text }]}>{t('settings.primaryCurrency')}</Text>
+        <View style={styles.currencyRow}>
+          <TextInput
+            style={[styles.currencyInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
+            value={currencyConfig.primary.name}
+            onChangeText={(val) => updateCurrencyConfig({ ...currencyConfig, primary: { ...currencyConfig.primary, name: val } })}
+            placeholder={t('settings.currencyName')}
+            placeholderTextColor={colors.textSecondary}
+            textAlign="right"
+          />
+          <TextInput
+            style={[styles.currencySymbolInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
+            value={currencyConfig.primary.symbol}
+            onChangeText={(val) => updateCurrencyConfig({ ...currencyConfig, primary: { ...currencyConfig.primary, symbol: val } })}
+            placeholder={t('settings.currencySymbol')}
+            placeholderTextColor={colors.textSecondary}
+            textAlign="center"
+          />
+        </View>
+
+        <Text style={[styles.subLabel, { color: colors.text }]}>{t('settings.secondaryCurrency')}</Text>
+        <View style={styles.currencyRow}>
+          <TextInput
+            style={[styles.currencyInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
+            value={currencyConfig.secondary.name}
+            onChangeText={(val) => updateCurrencyConfig({ ...currencyConfig, secondary: { ...currencyConfig.secondary, name: val } })}
+            placeholder={t('settings.currencyName')}
+            placeholderTextColor={colors.textSecondary}
+            textAlign="right"
+          />
+          <TextInput
+            style={[styles.currencySymbolInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
+            value={currencyConfig.secondary.symbol}
+            onChangeText={(val) => updateCurrencyConfig({ ...currencyConfig, secondary: { ...currencyConfig.secondary, symbol: val } })}
+            placeholder={t('settings.currencySymbol')}
+            placeholderTextColor={colors.textSecondary}
+            textAlign="center"
+          />
+        </View>
+
+        <Text style={[styles.subLabel, { color: colors.text }]}>{t('settings.exchangeRate')}</Text>
+        <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
+          1 {currencyConfig.primary.symbol} = ? {currencyConfig.secondary.symbol}
         </Text>
         <View style={styles.rateRow}>
           <TextInput
@@ -335,6 +404,23 @@ export default function SettingsScreen() {
           </View>
           <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
             {t('settings.manageCategoriesDesc')}
+          </Text>
+        </View>
+        <Ionicons name="chevron-back" size={20} color={colors.textSecondary} />
+      </TouchableOpacity>
+
+      {/* Tags Management */}
+      <TouchableOpacity
+        style={[styles.card, styles.navCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+        onPress={() => router.push('/tags' as any)}
+      >
+        <View style={styles.navCardContent}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="pricetags-outline" size={22} color={colors.tint} />
+            <Text style={[styles.cardTitle, { color: colors.text }]}>{t('settings.manageTags')}</Text>
+          </View>
+          <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
+            {t('settings.manageTagsDesc')}
           </Text>
         </View>
         <Ionicons name="chevron-back" size={20} color={colors.textSecondary} />
@@ -501,5 +587,50 @@ const styles = StyleSheet.create({
   signOutText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  subLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  currencyRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 4,
+  },
+  currencyInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 14,
+  },
+  currencySymbolInput: {
+    width: 60,
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  lockToggle: {
+    width: 50,
+    height: 30,
+    borderRadius: 15,
+    padding: 3,
+    justifyContent: 'center',
+  },
+  lockToggleKnob: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFF',
+  },
+  lockToggleKnobOn: {
+    alignSelf: 'flex-end',
+  },
+  lockToggleKnobOff: {
+    alignSelf: 'flex-start',
   },
 });

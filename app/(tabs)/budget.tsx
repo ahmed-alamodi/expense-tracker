@@ -16,9 +16,9 @@ import { useThemeColor } from '@/hooks/useThemeColor';
 import { useMonthlyTotal } from '@/hooks/useExpenses';
 import { isConfigured } from '@/lib/supabase';
 import { getBudgets, upsertBudget } from '@/lib/database';
-import { Budget, CategoryGroup } from '@/types/expense';
+import { Budget } from '@/types/expense';
 import { CATEGORY_COLORS } from '@/constants/categories';
-import { getCategories } from '@/lib/storage';
+import { useSettings } from '@/lib/settings-context';
 import MonthPicker from '@/components/MonthPicker';
 
 export default function BudgetScreen() {
@@ -32,7 +32,7 @@ export default function BudgetScreen() {
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, string>>({});
   const [loadingBudgets, setLoadingBudgets] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [categories, setCategories] = useState<CategoryGroup[]>([]);
+  const { categories, currencyConfig } = useSettings();
 
   const { totalSar, byCategory, refresh: refreshExpenses } = useMonthlyTotal(month, year);
 
@@ -40,9 +40,8 @@ export default function BudgetScreen() {
     if (!isConfigured) { setLoadingBudgets(false); return; }
     setLoadingBudgets(true);
     try {
-      const [data, cats] = await Promise.all([getBudgets(month, year), getCategories()]);
+      const data = await getBudgets(month, year);
       setBudgets(data);
-      setCategories(cats);
       const totalBudget = data.find(b => b.category === 'total');
       setTotalBudgetInput(totalBudget ? totalBudget.amount.toString() : '');
       const catMap: Record<string, string> = {};
@@ -151,7 +150,7 @@ export default function BudgetScreen() {
           <View style={styles.progressSection}>
             <View style={styles.progressHeader}>
               <Text style={[styles.progressLabel, { color: colors.text }]}>
-                {t('budget.spent')} {totalSar.toFixed(2)} / {totalBudget.toFixed(2)} {t('common.sar')}
+                {t('budget.spent')} {totalSar.toFixed(2)} / {totalBudget.toFixed(2)} {currencyConfig.primary.symbol}
               </Text>
               <Text style={[styles.pctBadge, { color: getStatusColor(totalPct) }]}>
                 {totalPct.toFixed(0)}%
@@ -175,8 +174,8 @@ export default function BudgetScreen() {
               ]}
             >
               {totalRemaining >= 0
-                ? `${t('budget.remaining')} ${totalRemaining.toFixed(2)} ${t('common.sar')}`
-                : `${t('budget.exceeded')} ${Math.abs(totalRemaining).toFixed(2)} ${t('common.sar')}`}
+                ? `${t('budget.remaining')} ${totalRemaining.toFixed(2)} ${currencyConfig.primary.symbol}`
+                : `${t('budget.exceeded')} ${Math.abs(totalRemaining).toFixed(2)} ${currencyConfig.primary.symbol}`}
             </Text>
           </View>
         )}
@@ -200,7 +199,7 @@ export default function BudgetScreen() {
                   <Text style={[styles.catName, { color: colors.text }]}>{cat.main}</Text>
                 </View>
                 <Text style={[styles.spentText, { color: colors.textSecondary }]}>
-                  {spent.toFixed(2)} {t('common.sar')}
+                  {spent.toFixed(2)} {currencyConfig.primary.symbol}
                 </Text>
               </View>
               <TextInput

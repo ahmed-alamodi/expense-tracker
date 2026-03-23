@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { Expense } from '@/types/expense';
 import { CATEGORY_COLORS } from '@/constants/categories';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { useSettings } from '@/lib/settings-context';
 
 interface Props {
   expense: Expense;
@@ -21,6 +22,7 @@ interface Props {
 export default function ExpenseCard({ expense, onDelete }: Props) {
   const colors = useThemeColor();
   const { t, i18n } = useTranslation();
+  const { currencyConfig } = useSettings();
 
   const categoryColor = CATEGORY_COLORS[expense.main_category] || '#B0BEC5';
   const locale = i18n.language === 'ar' ? 'ar-SA' : 'en-US';
@@ -57,7 +59,7 @@ export default function ExpenseCard({ expense, onDelete }: Props) {
       <View style={styles.content}>
         <View style={styles.topRow}>
           <Text style={[styles.amount, { color: colors.expense }]}>
-            {expense.amount_sar.toFixed(2)} {t('common.sar')}
+            {expense.amount_sar.toFixed(2)} {currencyConfig.primary.symbol}
           </Text>
           <Text style={[styles.description, { color: colors.text }]} numberOfLines={1}>
             {expense.description || expense.sub_category}
@@ -66,7 +68,7 @@ export default function ExpenseCard({ expense, onDelete }: Props) {
 
         <View style={styles.bottomRow}>
           <Text style={[styles.amountYmr, { color: colors.textSecondary }]}>
-            {expense.amount_ymr.toLocaleString()} {t('common.ymr')}
+            {expense.amount_ymr.toLocaleString()} {currencyConfig.secondary.symbol}
           </Text>
           <View style={styles.tags}>
             <Text style={[styles.date, { color: colors.textSecondary }]}>

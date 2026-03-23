@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Expense } from '@/types/expense';
 import { isConfigured } from '@/lib/supabase';
 import * as db from '@/lib/database';
+import { getCached, setCache, expensesCacheKey, monthlyTotalCacheKey } from '@/lib/cache';
 
 export function useExpenses(filters?: {
   month?: number;
@@ -21,11 +22,29 @@ export function useExpenses(filters?: {
       setError('Supabase غير مُعَدّ');
       return;
     }
+
+    const cacheKey = filters?.month && filters?.year
+      ? expensesCacheKey(filters.month, filters.year)
+      : null;
+
+    if (cacheKey && !filters?.mainCategory && !filters?.paymentMethod && !filters?.search) {
+      const cached = await getCached<Expense[]>(cacheKey);
+      if (cached) {
+        setExpenses(cached.data);
+        setLoading(false);
+        if (!cached.stale) return;
+      }
+    }
+
     try {
       setLoading(true);
       setError(null);
       const data = await db.getExpenses(filters);
       setExpenses(data);
+
+      if (cacheKey && !filters?.mainCategory && !filters?.paymentMethod && !filters?.search) {
+        await setCache(cacheKey, data);
+      }
     } catch (err: any) {
       setError(err.message || 'حدث خطأ في جلب البيانات');
     } finally {
@@ -60,10 +79,20 @@ export function useMonthlyTotal(month: number, year: number) {
       setLoading(false);
       return;
     }
+
+    const cacheKey = monthlyTotalCacheKey(month, year);
+    const cached = await getCached<typeof data>(cacheKey);
+    if (cached) {
+      setData(cached.data);
+      setLoading(false);
+      if (!cached.stale) return;
+    }
+
     try {
       setLoading(true);
       const result = await db.getMonthlyTotal(month, year);
       setData(result);
+      await setCache(cacheKey, result);
     } catch {
       // silent
     } finally {

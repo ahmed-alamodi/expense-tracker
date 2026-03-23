@@ -1,11 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DEFAULT_EXCHANGE_RATE, DEFAULT_PAYMENT_METHODS, DEFAULT_CATEGORIES } from '@/constants/categories';
-import { CategoryGroup } from '@/types/expense';
+import { DEFAULT_EXCHANGE_RATE, DEFAULT_PAYMENT_METHODS, DEFAULT_CATEGORIES, DEFAULT_CURRENCY_CONFIG } from '@/constants/categories';
+import { CategoryGroup, CurrencyConfig } from '@/types/expense';
 
 const KEYS = {
   EXCHANGE_RATE: '@exchange_rate',
   PAYMENT_METHODS: '@payment_methods',
   CATEGORIES: '@categories',
+  APP_LOCK_ENABLED: '@app_lock_enabled',
+  CURRENCY_CONFIG: '@currency_config',
 };
 
 export async function getExchangeRate(): Promise<number> {
@@ -53,4 +55,39 @@ export async function getCategories(): Promise<CategoryGroup[]> {
 
 export async function setCategories(categories: CategoryGroup[]): Promise<void> {
   await AsyncStorage.setItem(KEYS.CATEGORIES, JSON.stringify(categories));
+}
+
+export async function getAppLockEnabled(): Promise<boolean> {
+  try {
+    const val = await AsyncStorage.getItem(KEYS.APP_LOCK_ENABLED);
+    return val === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export async function setAppLockEnabled(enabled: boolean): Promise<void> {
+  await AsyncStorage.setItem(KEYS.APP_LOCK_ENABLED, enabled.toString());
+}
+
+export async function getCurrencyConfig(): Promise<CurrencyConfig> {
+  try {
+    const val = await AsyncStorage.getItem(KEYS.CURRENCY_CONFIG);
+    if (val) {
+      const config = JSON.parse(val);
+      return {
+        ...DEFAULT_CURRENCY_CONFIG,
+        ...config,
+        primary: { ...DEFAULT_CURRENCY_CONFIG.primary, ...config.primary },
+        secondary: { ...DEFAULT_CURRENCY_CONFIG.secondary, ...config.secondary },
+      };
+    }
+    return DEFAULT_CURRENCY_CONFIG;
+  } catch {
+    return DEFAULT_CURRENCY_CONFIG;
+  }
+}
+
+export async function setCurrencyConfig(config: CurrencyConfig): Promise<void> {
+  await AsyncStorage.setItem(KEYS.CURRENCY_CONFIG, JSON.stringify(config));
 }

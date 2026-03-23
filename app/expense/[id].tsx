@@ -6,6 +6,7 @@ import ExpenseForm from '@/components/ExpenseForm';
 import { getExpenseById, updateExpense } from '@/lib/database';
 import { Expense } from '@/types/expense';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { invalidateCachePattern } from '@/lib/cache';
 
 export default function EditExpenseScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -32,6 +33,8 @@ export default function EditExpenseScreen() {
   const handleSubmit = async (data: Omit<Expense, 'id' | 'created_at' | 'user_id'>) => {
     if (!id) return;
     await updateExpense(id, data);
+    await invalidateCachePattern('expenses_');
+    await invalidateCachePattern('monthly_total_');
     Alert.alert(t('common.done'), t('expenses.expenseUpdated'), [
       { text: t('common.ok'), onPress: () => router.back() },
     ]);

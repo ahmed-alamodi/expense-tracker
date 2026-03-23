@@ -23,20 +23,20 @@ import {
   updateMonthlyEstimate,
   deleteMonthlyEstimate,
 } from '@/lib/database';
-import { getCategories, getExchangeRate, sarToYmr, ymrToSar } from '@/lib/storage';
+import { sarToYmr, ymrToSar } from '@/lib/storage';
 import { MonthlyEstimate, CategoryGroup } from '@/types/expense';
+import { useSettings } from '@/lib/settings-context';
 
 export default function EstimatesScreen() {
   const colors = useThemeColor();
   const router = useRouter();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { categories, exchangeRate, currencyConfig } = useSettings();
   const [estimates, setEstimates] = useState<MonthlyEstimate[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState<MonthlyEstimate | null>(null);
-  const [categories, setCategories] = useState<CategoryGroup[]>([]);
-  const [exchangeRate, setExchangeRate] = useState(410);
 
   const [mainCategory, setMainCategory] = useState('');
   const [subCategory, setSubCategory] = useState('');
@@ -54,14 +54,8 @@ export default function EstimatesScreen() {
     if (!isConfigured) { setLoading(false); return; }
     setLoading(true);
     try {
-      const [data, cats, rate] = await Promise.all([
-        getMonthlyEstimates(),
-        getCategories(),
-        getExchangeRate(),
-      ]);
+      const data = await getMonthlyEstimates();
       setEstimates(data);
-      setCategories(cats);
-      setExchangeRate(rate);
     } catch (err: any) {
       Alert.alert(t('common.error'), err.message);
     } finally {
@@ -227,8 +221,8 @@ export default function EstimatesScreen() {
         {estimates.length > 0 && (
           <View style={[styles.summaryCard, { backgroundColor: colors.tint }]}>
             <Text style={styles.summaryLabel}>{t('estimates.totalMonthlyEstimates')}</Text>
-            <Text style={styles.summaryAmount}>{totalSar.toFixed(2)} {t('common.sar')}</Text>
-            <Text style={styles.summaryAmountSub}>{totalYmr.toLocaleString()} {t('common.ymr')}</Text>
+            <Text style={styles.summaryAmount}>{totalSar.toFixed(2)} {currencyConfig.primary.symbol}</Text>
+            <Text style={styles.summaryAmountSub}>{totalYmr.toLocaleString()} {currencyConfig.secondary.symbol}</Text>
           </View>
         )}
 
@@ -272,10 +266,10 @@ export default function EstimatesScreen() {
                   </View>
                   <View style={styles.estimateAmounts}>
                     <Text style={[styles.estimateAmountSar, { color: colors.text }]}>
-                      {item.amount_sar.toFixed(2)} {t('common.sar')}
+                      {item.amount_sar.toFixed(2)} {currencyConfig.primary.symbol}
                     </Text>
                     <Text style={[styles.estimateAmountYmr, { color: colors.textSecondary }]}>
-                      {item.amount_ymr.toLocaleString()} {t('common.ymr')}
+                      {item.amount_ymr.toLocaleString()} {currencyConfig.secondary.symbol}
                     </Text>
                   </View>
                 </View>
@@ -371,7 +365,7 @@ export default function EstimatesScreen() {
                 </View>
               </View>
               <Text style={[styles.rateHint, { color: colors.textSecondary }]}>
-                {t('estimates.exchangeRateHint')} {exchangeRate} {t('common.ymr')}
+                {t('estimates.exchangeRateHint')} {exchangeRate} {currencyConfig.secondary.symbol}
               </Text>
 
               <Text style={[styles.label, { color: colors.text }]}>{t('estimates.notesOptional')}</Text>

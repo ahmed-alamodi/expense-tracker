@@ -11,6 +11,31 @@ export interface Expense {
   notes: string | null;
   created_at: string;
   user_id?: string;
+  tag_id?: string | null;
+  _pendingSync?: boolean;
+}
+
+export interface Currency {
+  code: string;
+  name: string;
+  symbol: string;
+}
+
+export interface CurrencyConfig {
+  primary: Currency;
+  secondary: Currency;
+  exchangeRate: number;
+}
+
+export interface Tag {
+  id: string;
+  name: string;
+  description: string | null;
+  color: string;
+  start_date: string | null;
+  end_date: string | null;
+  is_active: boolean;
+  user_id?: string;
 }
 
 export interface MonthlyEstimate {

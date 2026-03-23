@@ -15,9 +15,12 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { Expense, CategoryGroup } from '@/types/expense';
+import { Expense, CategoryGroup, Tag } from '@/types/expense';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { getExchangeRate, getPaymentMethods, getCategories, sarToYmr, ymrToSar } from '@/lib/storage';
+import { sarToYmr, ymrToSar } from '@/lib/storage';
+import { useSettings } from '@/lib/settings-context';
+import { isConfigured } from '@/lib/supabase';
+import { getTags } from '@/lib/database';
 
 interface Props {
   initialData?: Partial<Expense>;
@@ -28,6 +31,7 @@ interface Props {
 export default function ExpenseForm({ initialData, onSubmit, submitLabel }: Props) {
   const colors = useThemeColor();
   const { t, i18n } = useTranslation();
+  const { exchangeRate: settingsRate, paymentMethods: settingsMethods, categories: settingsCategories, currencyConfig } = useSettings();
   const [date, setDate] = useState(new Date(initialData?.date || new Date()));
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [mainCategory, setMainCategory] = useState(initialData?.main_category || '');
@@ -37,23 +41,31 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel }: Prop
   const [amountYmr, setAmountYmr] = useState(initialData?.amount_ymr?.toString() || '');
   const [paymentMethod, setPaymentMethod] = useState(initialData?.payment_method || '');
   const [notes, setNotes] = useState(initialData?.notes || '');
-  const [exchangeRate, setExchangeRate] = useState(initialData?.exchange_rate || 410);
-  const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
-  const [categories, setCategories] = useState<CategoryGroup[]>([]);
+  const [exchangeRate, setExchangeRate] = useState(initialData?.exchange_rate || settingsRate);
   const [submitting, setSubmitting] = useState(false);
+
+  const [tagId, setTagId] = useState<string | null>(initialData?.tag_id || null);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
 
   const [showMainCatPicker, setShowMainCatPicker] = useState(false);
   const [showSubCatPicker, setShowSubCatPicker] = useState(false);
   const [showPaymentPicker, setShowPaymentPicker] = useState(false);
+  const [showTagPicker, setShowTagPicker] = useState(false);
 
   const label = submitLabel || t('common.save');
+  const paymentMethods = settingsMethods;
+  const categories = settingsCategories;
 
   useEffect(() => {
     if (!initialData?.exchange_rate) {
-      getExchangeRate().then(setExchangeRate);
+      setExchangeRate(settingsRate);
     }
-    getPaymentMethods().then(setPaymentMethods);
-    getCategories().then(setCategories);
+  }, [settingsRate, initialData?.exchange_rate]);
+
+  useEffect(() => {
+    if (isConfigured) {
+      getTags().then(setAvailableTags).catch(() => {});
+    }
   }, []);
 
   const subCategories = categories.find(c => c.main === mainCategory)?.subs || [];
@@ -96,6 +108,7 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel }: Prop
         exchange_rate: exchangeRate,
         payment_method: paymentMethod,
         notes: notes || null,
+        tag_id: tagId,
       });
 
       if (!initialData) {
@@ -247,7 +260,7 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel }: Prop
         {/* Amounts */}
         <View style={styles.row}>
           <View style={styles.halfField}>
-            <Text style={[styles.label, { color: colors.text }]}>{t('form.amountSar')}</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{t('form.amount')} ({currencyConfig.primary.symbol})</Text>
             <TextInput
               style={[styles.textInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
               value={amountSar}
@@ -259,7 +272,7 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel }: Prop
             />
           </View>
           <View style={styles.halfField}>
-            <Text style={[styles.label, { color: colors.text }]}>{t('form.amountYmr')}</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{t('form.amount')} ({currencyConfig.secondary.symbol})</Text>
             <TextInput
               style={[styles.textInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
               value={amountYmr}
@@ -272,7 +285,7 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel }: Prop
           </View>
         </View>
         <Text style={[styles.rateHint, { color: colors.textSecondary }]}>
-          {t('form.exchangeRateHint')} {exchangeRate} {t('common.ymr')}
+          {t('form.exchangeRateHint')} {exchangeRate} {currencyConfig.secondary.symbol}
         </Text>
 
         {/* Payment Method */}
@@ -292,6 +305,41 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel }: Prop
           paymentMethods,
           setPaymentMethod,
           t('form.paymentMethod')
+        )}
+
+        {/* Tag */}
+        {availableTags.length > 0 && (
+          <>
+            <Text style={[styles.label, { color: colors.text }]}>{t('form.tag')}</Text>
+            <TouchableOpacity
+              style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => setShowTagPicker(true)}
+            >
+              <Text style={{ color: tagId ? colors.text : colors.textSecondary }}>
+                {tagId
+                  ? availableTags.find(tag => tag.id === tagId)?.name || t('form.selectTag')
+                  : t('form.selectTag')}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                {tagId && (
+                  <TouchableOpacity onPress={() => setTagId(null)} hitSlop={8}>
+                    <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                )}
+                <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
+            {renderPickerModal(
+              showTagPicker,
+              () => setShowTagPicker(false),
+              availableTags.map(tag => tag.name),
+              (tagName) => {
+                const found = availableTags.find(tag => tag.name === tagName);
+                setTagId(found?.id || null);
+              },
+              t('form.tag')
+            )}
+          </>
         )}
 
         {/* Notes */}

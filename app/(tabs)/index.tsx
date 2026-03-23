@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,10 @@ import MonthPicker from '@/components/MonthPicker';
 import ExpenseCard from '@/components/ExpenseCard';
 import SearchFilter, { Filters } from '@/components/SearchFilter';
 import { deleteExpense } from '@/lib/database';
-import { getCategories, getPaymentMethods } from '@/lib/storage';
+import { useSettings } from '@/lib/settings-context';
+import { useNetwork } from '@/lib/network-context';
+import { Ionicons } from '@expo/vector-icons';
+import { invalidateCachePattern } from '@/lib/cache';
 
 export default function HomeScreen() {
   const colors = useThemeColor();
@@ -28,13 +31,10 @@ export default function HomeScreen() {
     mainCategory: '',
     paymentMethod: '',
   });
-  const [categoryNames, setCategoryNames] = useState<string[]>([]);
-  const [paymentMethodsList, setPaymentMethodsList] = useState<string[]>([]);
-
-  useEffect(() => {
-    getCategories().then(cats => setCategoryNames(cats.map(c => c.main)));
-    getPaymentMethods().then(setPaymentMethodsList);
-  }, []);
+  const { categories: settingsCategories, paymentMethods: settingsPaymentMethods, currencyConfig } = useSettings();
+  const { isOnline, pendingCount } = useNetwork();
+  const categoryNames = settingsCategories.map(c => c.main);
+  const paymentMethodsList = settingsPaymentMethods;
 
   const { expenses, loading, refresh } = useExpenses({
     month,
@@ -80,6 +80,8 @@ export default function HomeScreen() {
   const handleDelete = async (id: string) => {
     try {
       await deleteExpense(id);
+      await invalidateCachePattern('expenses_');
+      await invalidateCachePattern('monthly_total_');
       refresh();
       refreshTotal();
     } catch {
@@ -110,6 +112,18 @@ export default function HomeScreen() {
         }
         ListHeaderComponent={
           <View>
+            {(!isOnline || pendingCount > 0) && (
+              <View style={[styles.statusBanner, { backgroundColor: !isOnline ? '#FEF3C7' : '#DBEAFE' }]}>
+                <Ionicons
+                  name={!isOnline ? 'cloud-offline-outline' : 'sync-outline'}
+                  size={16}
+                  color={!isOnline ? '#D97706' : '#2563EB'}
+                />
+                <Text style={[styles.statusText, { color: !isOnline ? '#D97706' : '#2563EB' }]}>
+                  {!isOnline ? t('offline.banner') : `${t('offline.pending')}: ${pendingCount}`}
+                </Text>
+              </View>
+            )}
             <MonthPicker
               month={month}
               year={year}
@@ -128,7 +142,7 @@ export default function HomeScreen() {
                     {totalYmr.toLocaleString()}
                   </Text>
                   <Text style={[styles.amountLabel, { color: colors.textSecondary }]}>
-                    {t('common.ymrCurrency')}
+                    {currencyConfig.secondary.name}
                   </Text>
                 </View>
                 <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -137,7 +151,7 @@ export default function HomeScreen() {
                     {totalSar.toFixed(2)}
                   </Text>
                   <Text style={[styles.amountLabel, { color: colors.textSecondary }]}>
-                    {t('common.sarCurrency')}
+                    {currencyConfig.primary.name}
                   </Text>
                 </View>
               </View>
@@ -150,7 +164,7 @@ export default function HomeScreen() {
                   {topCategories.map(([cat, data]) => (
                     <View key={cat} style={styles.topCatRow}>
                       <Text style={[styles.topCatAmount, { color: colors.textSecondary }]}>
-                        {data.sar.toFixed(2)} {t('common.sar')} ({data.count})
+                        {data.sar.toFixed(2)} {currencyConfig.primary.symbol} ({data.count})
                       </Text>
                       <Text style={[styles.topCatName, { color: colors.text }]}>{cat}</Text>
                     </View>
@@ -262,5 +276,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 40,
     fontSize: 15,
+  },
+  statusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 10,
+  },
+  statusText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

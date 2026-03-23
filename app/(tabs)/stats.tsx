@@ -16,6 +16,7 @@ import { isConfigured } from '@/lib/supabase';
 import { getMonthlyTotals } from '@/lib/database';
 import MonthPicker from '@/components/MonthPicker';
 import { CATEGORY_COLORS } from '@/constants/categories';
+import { useSettings } from '@/lib/settings-context';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -30,6 +31,7 @@ export default function StatsScreen() {
   const [yearlyTotals, setYearlyTotals] = useState<number[]>(Array(12).fill(0));
   const [loadingYearly, setLoadingYearly] = useState(true);
 
+  const { currencyConfig } = useSettings();
   const { totalSar, byCategory, loading, refresh } = useMonthlyTotal(month, year);
 
   const fetchYearly = useCallback(async () => {
@@ -109,7 +111,7 @@ export default function StatsScreen() {
           {t('stats.monthlyTotal')}
         </Text>
         <Text style={[styles.totalValue, { color: colors.expense }]}>
-          {totalSar.toFixed(2)} {t('common.sar')}
+          {totalSar.toFixed(2)} {currencyConfig.primary.symbol}
         </Text>
       </View>
 
@@ -153,7 +155,7 @@ export default function StatsScreen() {
             height={200}
             chartConfig={chartConfig}
             yAxisLabel=""
-            yAxisSuffix={` ${t('common.sar')}`}
+            yAxisSuffix={` ${currencyConfig.primary.symbol}`}
             fromZero
             showValuesOnTopOfBars
             style={{ borderRadius: 8 }}
@@ -180,7 +182,7 @@ export default function StatsScreen() {
                       <Text style={[styles.catName, { color: colors.text }]}>{cat}</Text>
                     </View>
                     <Text style={[styles.catAmount, { color: colors.textSecondary }]}>
-                      {data.sar.toFixed(2)} {t('common.sar')} ({data.count})
+                      {data.sar.toFixed(2)} {currencyConfig.primary.symbol} ({data.count})
                     </Text>
                   </View>
                   <View style={[styles.progressBar, { backgroundColor: colors.border }]}>

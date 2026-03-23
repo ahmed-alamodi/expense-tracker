@@ -10,6 +10,9 @@ import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { isConfigured } from '@/lib/supabase';
 import { AppThemeProvider, useAppTheme } from '@/lib/theme-context';
 import { LanguageProvider } from '@/lib/language-context';
+import { AppLockProvider } from '@/lib/app-lock-context';
+import { SettingsProvider } from '@/lib/settings-context';
+import { NetworkProvider } from '@/lib/network-context';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -64,7 +67,13 @@ export default function RootLayout() {
     <AppThemeProvider>
       <AuthProvider>
         <LanguageProvider>
-          <RootLayoutNav />
+          <NetworkProvider>
+            <SettingsProvider>
+              <AppLockProvider>
+                <RootLayoutNav />
+              </AppLockProvider>
+            </SettingsProvider>
+          </NetworkProvider>
         </LanguageProvider>
       </AuthProvider>
     </AppThemeProvider>
@@ -110,6 +119,11 @@ function RootLayoutNav() {
             presentation: 'modal',
             headerShown: true,
           }}
+        />
+        <Stack.Screen name="tags" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="tag-stats/[id]"
+          options={{ headerShown: false }}
         />
         <Stack.Screen name="+not-found" />
       </Stack>
