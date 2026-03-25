@@ -8,10 +8,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { alert } from '@/lib/alert';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/auth-context';
 import { isConfigured } from '@/lib/supabase';
@@ -44,17 +44,17 @@ export default function AuthScreen() {
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert(t('common.warning'), t('auth.enterCredentials'));
+      alert(t('common.warning'), t('auth.enterCredentials'));
       return;
     }
 
     if (!isLogin && password !== confirmPassword) {
-      Alert.alert(t('common.warning'), t('auth.passwordMismatch'));
+      alert(t('common.warning'), t('auth.passwordMismatch'));
       return;
     }
 
     if (!isLogin && password.length < 6) {
-      Alert.alert(t('common.warning'), t('auth.passwordMinLength'));
+      alert(t('common.warning'), t('auth.passwordMinLength'));
       return;
     }
 
@@ -63,14 +63,14 @@ export default function AuthScreen() {
       if (isLogin) {
         const { error } = await signIn(email.trim(), password);
         if (error) {
-          Alert.alert(t('common.error'), getErrorMessage(error.message));
+          alert(t('common.error'), getErrorMessage(error.message));
         }
       } else {
         const { error } = await signUp(email.trim(), password);
         if (error) {
-          Alert.alert(t('common.error'), getErrorMessage(error.message));
+          alert(t('common.error'), getErrorMessage(error.message));
         } else {
-          Alert.alert(
+          alert(
             t('auth.registered'),
             t('auth.registeredMsg'),
             [{ text: t('common.ok'), onPress: () => setIsLogin(true) }]
@@ -78,7 +78,7 @@ export default function AuthScreen() {
         }
       }
     } catch (err: any) {
-      Alert.alert(t('common.error'), err.message);
+      alert(t('common.error'), err.message);
     } finally {
       setLoading(false);
     }

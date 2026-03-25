@@ -1,17 +1,17 @@
+import { useThemeColor } from '@/hooks/useThemeColor';
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  View,
+  FlatList,
+  Modal,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
-  StyleSheet,
   TouchableOpacity,
-  Modal,
-  FlatList,
-  ScrollView,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
-import { useThemeColor } from '@/hooks/useThemeColor';
 
 export interface Filters {
   search: string;

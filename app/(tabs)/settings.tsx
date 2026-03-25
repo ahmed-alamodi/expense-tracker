@@ -6,10 +6,10 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { alert } from '@/lib/alert';
 import { useRouter } from 'expo-router';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -48,17 +48,17 @@ export default function SettingsScreen() {
   const handleSaveRate = async () => {
     const val = parseFloat(rate);
     if (isNaN(val) || val <= 0) {
-      Alert.alert(t('common.error'), t('settings.invalidRate'));
+      alert(t('common.error'), t('settings.invalidRate'));
       return;
     }
     await updateCurrencyConfig({ ...currencyConfig, exchangeRate: val });
-    Alert.alert(t('common.done'), t('settings.rateSaved'));
+    alert(t('common.done'), t('settings.rateSaved'));
   };
 
   const handleAddMethod = async () => {
     if (!newMethod.trim()) return;
     if (methods.includes(newMethod.trim())) {
-      Alert.alert(t('common.warning'), t('settings.methodExists'));
+      alert(t('common.warning'), t('settings.methodExists'));
       return;
     }
     const updated = [...methods, newMethod.trim()];
@@ -68,7 +68,7 @@ export default function SettingsScreen() {
   };
 
   const handleRemoveMethod = async (method: string) => {
-    Alert.alert(t('common.delete'), `${t('common.delete')} "${method}"?`, [
+    alert(t('common.delete'), `${t('common.delete')} "${method}"?`, [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('common.delete'),
@@ -84,14 +84,14 @@ export default function SettingsScreen() {
 
   const handleExport = async () => {
     if (!isConfigured) {
-      Alert.alert(t('common.warning'), t('settings.setupSupabase'));
+      alert(t('common.warning'), t('settings.setupSupabase'));
       return;
     }
     setExporting(true);
     try {
       const expenses = await getExpenses();
       if (expenses.length === 0) {
-        Alert.alert(t('common.warning'), t('settings.noExpensesToExport'));
+        alert(t('common.warning'), t('settings.noExpensesToExport'));
         setExporting(false);
         return;
       }
@@ -124,10 +124,10 @@ export default function SettingsScreen() {
           dialogTitle: t('settings.exportDialogTitle'),
         });
       } else {
-        Alert.alert(t('common.done'), `${t('settings.fileSaved')} ${fileName}`);
+        alert(t('common.done'), `${t('settings.fileSaved')} ${fileName}`);
       }
     } catch (err: any) {
-      Alert.alert(t('common.error'), err.message || t('settings.exportFailed'));
+      alert(t('common.error'), err.message || t('settings.exportFailed'));
     } finally {
       setExporting(false);
     }
@@ -221,7 +221,7 @@ export default function SettingsScreen() {
         onPress={async () => {
           const success = await toggleLock();
           if (!success && !isLockEnabled) {
-            Alert.alert(t('common.warning'), t('settings.appLockNotSupported'));
+            alert(t('common.warning'), t('settings.appLockNotSupported'));
           }
         }}
       >
@@ -449,7 +449,7 @@ export default function SettingsScreen() {
       <TouchableOpacity
         style={[styles.signOutBtn, { borderColor: colors.danger }]}
         onPress={() => {
-          Alert.alert(t('settings.signOut'), t('settings.signOutConfirm'), [
+          alert(t('settings.signOut'), t('settings.signOutConfirm'), [
             { text: t('common.cancel'), style: 'cancel' },
             {
               text: t('settings.signOut'),

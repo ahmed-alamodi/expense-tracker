@@ -8,7 +8,6 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   ScrollView,
   StyleSheet,
@@ -17,6 +16,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { alert } from '@/lib/alert';
 
 export default function CategoriesScreen() {
   const colors = useThemeColor();
@@ -57,7 +57,7 @@ export default function CategoriesScreen() {
     const name = newMainName.trim();
     if (!name) return;
     if (categories.some(c => c.main === name)) {
-      Alert.alert(t('common.warning'), t('categories.categoryExists'));
+      alert(t('common.warning'), t('categories.categoryExists'));
       return;
     }
     const updated = [...categories, { main: name, subs: [] }];
@@ -70,7 +70,7 @@ export default function CategoriesScreen() {
     const name = editMainName.trim();
     if (!name) return;
     if (categories.some((c, i) => c.main === name && i !== idx)) {
-      Alert.alert(t('common.warning'), t('categories.categoryExists'));
+      alert(t('common.warning'), t('categories.categoryExists'));
       return;
     }
     const updated = categories.map((c, i) =>
@@ -83,7 +83,7 @@ export default function CategoriesScreen() {
 
   const handleDeleteMain = (idx: number) => {
     const cat = categories[idx];
-    Alert.alert(
+    alert(
       t('categories.deleteCategory'),
       `${t('common.delete')} "${cat.main}" ${t('categories.deleteCategoryConfirm')} (${cat.subs.length})?`,
       [
@@ -114,7 +114,7 @@ export default function CategoriesScreen() {
     if (!name) return;
     const cat = categories[selectedMainIdx];
     if (cat.subs.includes(name)) {
-      Alert.alert(t('common.warning'), t('categories.subCategoryExists'));
+      alert(t('common.warning'), t('categories.subCategoryExists'));
       return;
     }
     const updated = categories.map((c, i) =>
@@ -130,7 +130,7 @@ export default function CategoriesScreen() {
     if (!name) return;
     const cat = categories[selectedMainIdx];
     if (cat.subs.some((s, i) => s === name && i !== subIdx)) {
-      Alert.alert(t('common.warning'), t('categories.subCategoryExists'));
+      alert(t('common.warning'), t('categories.subCategoryExists'));
       return;
     }
     const updated = categories.map((c, i) =>
@@ -146,7 +146,7 @@ export default function CategoriesScreen() {
   const handleDeleteSub = async (subIdx: number) => {
     if (selectedMainIdx === null) return;
     const cat = categories[selectedMainIdx];
-    Alert.alert(t('common.delete'), `${t('common.delete')} "${cat.subs[subIdx]}"?`, [
+    alert(t('common.delete'), `${t('common.delete')} "${cat.subs[subIdx]}"?`, [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('common.delete'),

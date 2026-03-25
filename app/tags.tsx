@@ -1,10 +1,11 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TextInput,
-  TouchableOpacity, Alert, ActivityIndicator, Modal,
+  TouchableOpacity, ActivityIndicator, Modal,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { alert } from '@/lib/alert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useThemeColor } from '@/hooks/useThemeColor';
@@ -38,7 +39,7 @@ export default function TagsScreen() {
       const data = await getTags();
       setTags(data);
     } catch (err: any) {
-      Alert.alert(t('common.error'), err.message);
+      alert(t('common.error'), err.message);
     } finally {
       setLoading(false);
     }
@@ -68,7 +69,7 @@ export default function TagsScreen() {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert(t('common.warning'), t('tags.enterName'));
+      alert(t('common.warning'), t('tags.enterName'));
       return;
     }
     setSaving(true);
@@ -93,14 +94,14 @@ export default function TagsScreen() {
       resetForm();
       fetchTags();
     } catch (err: any) {
-      Alert.alert(t('common.error'), err.message);
+      alert(t('common.error'), err.message);
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = (tag: Tag) => {
-    Alert.alert(t('common.delete'), `${t('common.delete')} "${tag.name}"?`, [
+    alert(t('common.delete'), `${t('common.delete')} "${tag.name}"?`, [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('common.delete'),
@@ -110,7 +111,7 @@ export default function TagsScreen() {
             await deleteTag(tag.id);
             fetchTags();
           } catch (err: any) {
-            Alert.alert(t('common.error'), err.message);
+            alert(t('common.error'), err.message);
           }
         },
       },

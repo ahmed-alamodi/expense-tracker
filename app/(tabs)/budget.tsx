@@ -6,11 +6,11 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { alert } from '@/lib/alert';
 import { useTranslation } from 'react-i18next';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useMonthlyTotal } from '@/hooks/useExpenses';
@@ -95,10 +95,10 @@ export default function BudgetScreen() {
           });
         }
       }
-      Alert.alert(t('common.done'), t('budget.budgetSaved'));
+      alert(t('common.done'), t('budget.budgetSaved'));
       fetchBudgets();
     } catch (err: any) {
-      Alert.alert(t('common.error'), err.message);
+      alert(t('common.error'), err.message);
     } finally {
       setSaving(false);
     }

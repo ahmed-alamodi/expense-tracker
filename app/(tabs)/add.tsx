@@ -1,5 +1,6 @@
 import React from 'react';
-import { Alert, View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { alert } from '@/lib/alert';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import ExpenseForm from '@/components/ExpenseForm';
@@ -30,7 +31,7 @@ export default function AddExpenseScreen() {
       });
       await refreshPendingCount();
     }
-    Alert.alert(t('common.done'), t('add.expenseAdded'), [
+    alert(t('common.done'), t('add.expenseAdded'), [
       { text: t('common.ok'), onPress: () => router.navigate('/(tabs)') },
     ]);
   };

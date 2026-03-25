@@ -4,9 +4,9 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { alert } from '@/lib/alert';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Expense } from '@/types/expense';
@@ -36,7 +36,7 @@ export default function ExpenseCard({ expense, onDelete }: Props) {
   };
 
   const handleDelete = () => {
-    Alert.alert(t('expenses.deleteExpense'), t('expenses.deleteConfirm'), [
+    alert(t('expenses.deleteExpense'), t('expenses.deleteConfirm'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('common.delete'),

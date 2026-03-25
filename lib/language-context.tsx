@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { I18nManager, Alert } from 'react-native';
+import { I18nManager } from 'react-native';
+import { alert } from '@/lib/alert';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 
@@ -46,7 +47,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       I18nManager.allowRTL(isRTL);
       I18nManager.forceRTL(isRTL);
 
-      Alert.alert(
+      alert(
         t('settings.languageChangeTitle'),
         t('settings.languageChangeMsg'),
         [{ text: t('common.ok') }]

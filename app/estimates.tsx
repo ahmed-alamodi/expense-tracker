@@ -6,13 +6,13 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Modal,
   FlatList,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { alert } from '@/lib/alert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useThemeColor } from '@/hooks/useThemeColor';
@@ -57,7 +57,7 @@ export default function EstimatesScreen() {
       const data = await getMonthlyEstimates();
       setEstimates(data);
     } catch (err: any) {
-      Alert.alert(t('common.error'), err.message);
+      alert(t('common.error'), err.message);
     } finally {
       setLoading(false);
     }
@@ -105,15 +105,15 @@ export default function EstimatesScreen() {
 
   const handleSave = async () => {
     if (!mainCategory) {
-      Alert.alert(t('common.warning'), t('estimates.selectMainCategoryAlert'));
+      alert(t('common.warning'), t('estimates.selectMainCategoryAlert'));
       return;
     }
     if (!description.trim()) {
-      Alert.alert(t('common.warning'), t('estimates.enterDescription'));
+      alert(t('common.warning'), t('estimates.enterDescription'));
       return;
     }
     if (!amountSar && !amountYmr) {
-      Alert.alert(t('common.warning'), t('estimates.enterAmount'));
+      alert(t('common.warning'), t('estimates.enterAmount'));
       return;
     }
     setSaving(true);
@@ -135,14 +135,14 @@ export default function EstimatesScreen() {
       resetForm();
       fetchData();
     } catch (err: any) {
-      Alert.alert(t('common.error'), err.message);
+      alert(t('common.error'), err.message);
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = (item: MonthlyEstimate) => {
-    Alert.alert(t('common.delete'), `${t('common.delete')} "${item.description}"?`, [
+    alert(t('common.delete'), `${t('common.delete')} "${item.description}"?`, [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('common.delete'),
@@ -152,7 +152,7 @@ export default function EstimatesScreen() {
             await deleteMonthlyEstimate(item.id);
             fetchData();
           } catch (err: any) {
-            Alert.alert(t('common.error'), err.message);
+            alert(t('common.error'), err.message);
           }
         },
       },
@@ -318,7 +318,7 @@ export default function EstimatesScreen() {
               <TouchableOpacity
                 style={[styles.pickerBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
                 onPress={() => {
-                  if (!mainCategory) { Alert.alert(t('common.warning'), t('estimates.selectMainFirst')); return; }
+                  if (!mainCategory) { alert(t('common.warning'), t('estimates.selectMainFirst')); return; }
                   setShowSubCatPicker(true);
                 }}
               >

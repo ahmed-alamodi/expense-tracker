@@ -1,26 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import { useThemeColor } from '@/hooks/useThemeColor';
+import { getTags } from '@/lib/database';
+import { useSettings } from '@/lib/settings-context';
+import { sarToYmr, ymrToSar } from '@/lib/storage';
+import { isConfigured } from '@/lib/supabase';
+import { Expense, Tag } from '@/types/expense';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  Platform,
-  Modal,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Ionicons } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
-import { Expense, CategoryGroup, Tag } from '@/types/expense';
-import { useThemeColor } from '@/hooks/useThemeColor';
-import { sarToYmr, ymrToSar } from '@/lib/storage';
-import { useSettings } from '@/lib/settings-context';
-import { isConfigured } from '@/lib/supabase';
-import { getTags } from '@/lib/database';
+import { alert } from '@/lib/alert';
 
 interface Props {
   initialData?: Partial<Expense>;
@@ -88,11 +88,11 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel }: Prop
 
   const handleSubmit = async () => {
     if (!mainCategory) {
-      Alert.alert(t('common.warning'), t('form.selectMainCategoryAlert'));
+      alert(t('common.warning'), t('form.selectMainCategoryAlert'));
       return;
     }
     if (!amountSar && !amountYmr) {
-      Alert.alert(t('common.warning'), t('form.enterAmount'));
+      alert(t('common.warning'), t('form.enterAmount'));
       return;
     }
 
@@ -122,7 +122,7 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel }: Prop
         setNotes('');
       }
     } catch (err: any) {
-      Alert.alert(t('common.error'), err.message || t('form.errorOccurred'));
+      alert(t('common.error'), err.message || t('form.errorOccurred'));
     } finally {
       setSubmitting(false);
     }
@@ -227,7 +227,7 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel }: Prop
           style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border }]}
           onPress={() => {
             if (!mainCategory) {
-              Alert.alert(t('common.warning'), t('form.selectMainFirst'));
+              alert(t('common.warning'), t('form.selectMainFirst'));
               return;
             }
             setShowSubCatPicker(true);
@@ -308,38 +308,35 @@ export default function ExpenseForm({ initialData, onSubmit, submitLabel }: Prop
         )}
 
         {/* Tag */}
-        {availableTags.length > 0 && (
-          <>
-            <Text style={[styles.label, { color: colors.text }]}>{t('form.tag')}</Text>
-            <TouchableOpacity
-              style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => setShowTagPicker(true)}
-            >
-              <Text style={{ color: tagId ? colors.text : colors.textSecondary }}>
-                {tagId
-                  ? availableTags.find(tag => tag.id === tagId)?.name || t('form.selectTag')
-                  : t('form.selectTag')}
-              </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                {tagId && (
-                  <TouchableOpacity onPress={() => setTagId(null)} hitSlop={8}>
-                    <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                )}
-                <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
-              </View>
-            </TouchableOpacity>
-            {renderPickerModal(
-              showTagPicker,
-              () => setShowTagPicker(false),
-              availableTags.map(tag => tag.name),
-              (tagName) => {
-                const found = availableTags.find(tag => tag.name === tagName);
-                setTagId(found?.id || null);
-              },
-              t('form.tag')
+        <Text style={[styles.label, { color: colors.text }]}>{t('form.tag')}</Text>
+        <TouchableOpacity
+          style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border }, availableTags.length === 0 && { opacity: 0.5 }]}
+          onPress={() => setShowTagPicker(true)}
+          disabled={availableTags.length === 0}
+        >
+          <Text style={{ color: tagId ? colors.text : colors.textSecondary }}>
+            {tagId
+              ? availableTags.find(tag => tag.id === tagId)?.name || t('form.selectTag')
+              : t('form.selectTag')}
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {tagId && (
+              <TouchableOpacity onPress={() => setTagId(null)} hitSlop={8}>
+                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
             )}
-          </>
+            <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+          </View>
+        </TouchableOpacity>
+        {renderPickerModal(
+          showTagPicker,
+          () => setShowTagPicker(false),
+          availableTags.map(tag => tag.name),
+          (tagName) => {
+            const found = availableTags.find(tag => tag.name === tagName);
+            setTagId(found?.id || null);
+          },
+          t('form.tag')
         )}
 
         {/* Notes */}

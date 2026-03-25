@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { alert } from '@/lib/alert';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import ExpenseForm from '@/components/ExpenseForm';
@@ -22,7 +23,7 @@ export default function EditExpenseScreen() {
         const data = await getExpenseById(id);
         setExpense(data);
       } catch {
-        Alert.alert(t('common.error'), t('expenses.notFound'));
+        alert(t('common.error'), t('expenses.notFound'));
         router.back();
       } finally {
         setLoading(false);
@@ -35,7 +36,7 @@ export default function EditExpenseScreen() {
     await updateExpense(id, data);
     await invalidateCachePattern('expenses_');
     await invalidateCachePattern('monthly_total_');
-    Alert.alert(t('common.done'), t('expenses.expenseUpdated'), [
+    alert(t('common.done'), t('expenses.expenseUpdated'), [
       { text: t('common.ok'), onPress: () => router.back() },
     ]);
   };
