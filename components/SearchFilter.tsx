@@ -205,6 +205,7 @@ export default function SearchFilter({ filters, onFiltersChange, categoryNames =
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
+    marginTop: 12,
     marginBottom: 8,
   },
   searchBar: {

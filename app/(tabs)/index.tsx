@@ -243,18 +243,18 @@ const styles = StyleSheet.create({
     marginTop: 14,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: '#E5E7EB',
-    paddingTop: 10,
+    paddingTop: 12,
   },
   topCatsTitle: {
     fontSize: 12,
     fontWeight: '600',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   topCatRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 3,
+    paddingVertical: 5,
   },
   topCatName: {
     fontSize: 13,

@@ -103,10 +103,10 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     marginHorizontal: 16,
-    marginVertical: 4,
+    marginVertical: 6,
     borderRadius: 12,
     borderWidth: 1,
   },
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   deleteBtn: {
-    padding: 4,
-    marginLeft: 4,
+    padding: 6,
+    marginLeft: 8,
   },
 });
