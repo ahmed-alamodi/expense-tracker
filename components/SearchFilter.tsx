@@ -32,7 +32,7 @@ export default function SearchFilter({ filters, onFiltersChange, categoryNames =
   const [showCatPicker, setShowCatPicker] = useState(false);
   const [showPaymentPicker, setShowPaymentPicker] = useState(false);
 
-  const hasActiveFilters = filters.mainCategory || filters.paymentMethod;
+  const hasActiveFilters = !!(filters.mainCategory || filters.paymentMethod);
 
   const clearFilters = () => {
     onFiltersChange({ search: '', mainCategory: '', paymentMethod: '' });
@@ -92,7 +92,6 @@ export default function SearchFilter({ filters, onFiltersChange, categoryNames =
 
   return (
     <View style={styles.container}>
-      {/* Search Bar */}
       <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Ionicons name="search" size={18} color={colors.textSecondary} />
         <TextInput
@@ -113,8 +112,6 @@ export default function SearchFilter({ filters, onFiltersChange, categoryNames =
           </TouchableOpacity>
         ) : null}
       </View>
-
-      {/* Filter Chips */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -144,7 +141,6 @@ export default function SearchFilter({ filters, onFiltersChange, categoryNames =
             color={filters.mainCategory ? '#FFF' : colors.textSecondary}
           />
         </TouchableOpacity>
-
         <TouchableOpacity
           style={[
             styles.chip,
@@ -169,7 +165,6 @@ export default function SearchFilter({ filters, onFiltersChange, categoryNames =
             color={filters.paymentMethod ? '#FFF' : colors.textSecondary}
           />
         </TouchableOpacity>
-
         {hasActiveFilters && (
           <TouchableOpacity
             style={[styles.chip, { backgroundColor: colors.danger, borderColor: colors.danger }]}
@@ -180,7 +175,6 @@ export default function SearchFilter({ filters, onFiltersChange, categoryNames =
           </TouchableOpacity>
         )}
       </ScrollView>
-
       {renderPickerModal(
         showCatPicker,
         () => setShowCatPicker(false),
@@ -189,7 +183,6 @@ export default function SearchFilter({ filters, onFiltersChange, categoryNames =
         t('filter.filterByCategory'),
         filters.mainCategory
       )}
-
       {renderPickerModal(
         showPaymentPicker,
         () => setShowPaymentPicker(false),

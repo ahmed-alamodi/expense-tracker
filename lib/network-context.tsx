@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { processSyncQueue, getPendingCount } from './sync-queue';
+import { supabase, isConfigured } from './supabase';
 
 interface NetworkContextType {
   isOnline: boolean;
@@ -15,15 +16,10 @@ const NetworkContext = createContext<NetworkContextType>({
 });
 
 async function checkConnectivity(): Promise<boolean> {
+  if (!isConfigured) return false;
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    await fetch('https://www.google.com/generate_204', {
-      method: 'HEAD',
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    return true;
+    const { error } = await supabase.from('expenses').select('id', { count: 'exact', head: true }).limit(0);
+    return !error;
   } catch {
     return false;
   }
